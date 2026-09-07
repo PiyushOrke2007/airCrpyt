@@ -99,62 +99,7 @@ class HomeScreen extends StatelessWidget {
               ),
 
               const Spacer(),
-
-              const Text(
-                'Offline • Private • Direct',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                ),
-              ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-class DeviceIdDebugScreen extends StatefulWidget {
-  const DeviceIdDebugScreen({super.key});
-
-  @override
-  State<DeviceIdDebugScreen> createState() => _DeviceIdDebugScreenState();
-}
-
-class _DeviceIdDebugScreenState extends State<DeviceIdDebugScreen> {
-  final DeviceIdentityService _identityService =
-  DeviceIdentityService();
-
-  String _deviceId = 'Loading...';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadDeviceId();
-  }
-
-  Future<void> _loadDeviceId() async {
-    final id = await _identityService.getDeviceId();
-
-    if (mounted) {
-      setState(() {
-        _deviceId = id;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Device Identity'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: SelectableText(
-          _deviceId,
-          style: const TextStyle(
-            fontSize: 16,
           ),
         ),
       ),

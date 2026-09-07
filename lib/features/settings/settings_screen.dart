@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../core/services/settings_service.dart';
 
 class SettingsScreen extends StatefulWidget {
