@@ -63,8 +63,6 @@ class HomeScreen extends StatelessWidget {
                 size: 80,
               ),
 
-              const SizedBox(height: 24),
-
               const Text(
                 'Secure Offline Sharing',
                 textAlign: TextAlign.center,
@@ -81,7 +79,7 @@ class HomeScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 40),
+              const Spacer(),
 
               FilledButton.icon(
                 onPressed: () {
@@ -101,7 +99,7 @@ class HomeScreen extends StatelessWidget {
                 label: const Text('Receive Files'),
               ),
 
-              const SizedBox(height: 24),
+              const Spacer(),
 
               ListTile(
                 leading: const Icon(Icons.folder),
@@ -146,8 +144,7 @@ class HomeScreen extends StatelessWidget {
                   );
                 },
               ),
-
-
+              const Spacer(),
             ],
           ),
         ),
