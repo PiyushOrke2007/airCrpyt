@@ -4,18 +4,19 @@ import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
 
 import '../database/trash_repository.dart';
+import '../database/trash_repository_interface.dart';
 import '../models/trash_item.dart';
 import 'file_storage.dart';
 import 'file_storage_service.dart';
 
 class TrashService {
   final FileStorage _storage;
-  final TrashRepository _repository;
+  final TrashRepositoryInterface _repository;
   final Uuid _uuid;
 
   TrashService({
     FileStorage? storage,
-    TrashRepository? repository,
+    TrashRepositoryInterface? repository,
     Uuid? uuid,
   })  : _storage = storage ?? FileStorageService(),
         _repository = repository ?? TrashRepository(),
@@ -34,7 +35,21 @@ class TrashService {
       );
     }
 
-    final movedFile = await _storage.moveToTrash(file);
+    final trashDirectory =
+    await _storage.getTrashDirectory();
+
+    final trashFileName =
+    await _createUniqueTrashFileName(
+      trashDirectory,
+      path.basename(file.path),
+    );
+
+    final targetPath = path.join(
+      trashDirectory.path,
+      trashFileName,
+    );
+
+    final movedFile = await file.rename(targetPath);
 
     final deletedAt = DateTime.now();
 
@@ -45,12 +60,38 @@ class TrashService {
       trashPath: movedFile.path,
       deletedAt: deletedAt,
       permanentDeleteAt:
-      deletedAt.add(const Duration(days: 60)),
+      deletedAt.add(
+        const Duration(days: 60),
+      ),
     );
 
     await _repository.insertTrashItem(item);
 
     return item;
+  }
+
+  Future<String> _createUniqueTrashFileName(
+      Directory directory,
+      String originalName,
+      ) async {
+    final extension = path.extension(originalName);
+
+    final baseName = path.basenameWithoutExtension(
+      originalName,
+    );
+
+    var candidate = originalName;
+    var counter = 1;
+
+    while (
+    await File(
+      path.join(directory.path, candidate),
+    ).exists()) {
+      candidate = '$baseName ($counter)$extension';
+      counter++;
+    }
+
+    return candidate;
   }
 
   Future<void> restore(TrashItem item) async {
@@ -87,7 +128,9 @@ class TrashService {
     final currentTime = now ?? DateTime.now();
 
     final expiredItems =
-    await _repository.getExpiredItems(currentTime);
+    await _repository.getExpiredItems(
+      currentTime,
+    );
 
     for (final item in expiredItems) {
       await permanentlyDelete(item);

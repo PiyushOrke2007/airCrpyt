@@ -1,9 +1,10 @@
+import 'package:aircrypt/core/database/trash_repository_interface.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/trash_item.dart';
 import 'database_service.dart';
 
-class TrashRepository {
+class TrashRepository implements TrashRepositoryInterface {
   final DatabaseService _databaseService;
 
   TrashRepository({

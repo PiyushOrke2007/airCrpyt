@@ -3,20 +3,18 @@ import 'dart:io';
 import 'package:aircrypt/core/services/file_storage.dart';
 
 class FakeFileStorage implements FileStorage {
-  final Directory root =
-  Directory('test_storage');
+  final Directory root;
+  final Directory received;
+  final Directory sent;
+  final Directory temporary;
+  final Directory trash;
 
-  final Directory received =
-  Directory('test_storage/Received');
-
-  final Directory sent =
-  Directory('test_storage/Sent');
-
-  final Directory temporary =
-  Directory('test_storage/Temporary');
-
-  final Directory trash =
-  Directory('test_storage/Trash');
+  FakeFileStorage()
+      : root = Directory('test_storage'),
+        received = Directory('test_storage/Received'),
+        sent = Directory('test_storage/Sent'),
+        temporary = Directory('test_storage/Temporary'),
+        trash = Directory('test_storage/Trash');
 
   @override
   Future<Directory> getRootDirectory() async {
@@ -49,9 +47,9 @@ class FakeFileStorage implements FileStorage {
   }
 
   @override
-  Future<File> moveToTrash(
-      File file,
-      ) async {
+  Future<File> moveToTrash(File file) async {
+    await trash.create(recursive: true);
+
     final destination = File(
       '${trash.path}/${file.uri.pathSegments.last}',
     );
@@ -74,9 +72,7 @@ class FakeFileStorage implements FileStorage {
   }
 
   @override
-  Future<void> permanentlyDelete(
-      File file,
-      ) async {
+  Future<void> permanentlyDelete(File file) async {
     if (await file.exists()) {
       await file.delete();
     }
@@ -88,6 +84,12 @@ class FakeFileStorage implements FileStorage {
       await temporary.delete(
         recursive: true,
       );
+    }
+  }
+
+  Future<void> cleanup() async {
+    if (await root.exists()) {
+      await root.delete(recursive: true);
     }
   }
 }
