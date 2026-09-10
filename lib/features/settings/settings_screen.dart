@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/services/device_identity_service.dart';
 import '../../core/services/settings_service.dart';
+import '../transfer/tcp_receiver_screen.dart';
+import '../transfer/tcp_sender_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -126,6 +128,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
               child: const Text('Show Device ID'),
             ),
+
+            OutlinedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                    const TcpReceiverScreen(),
+                  ),
+                );
+              },
+              child: const Text(
+                'TCP Receiver Test',
+              ),
+            ),
+            OutlinedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                    const TcpSenderScreen(),
+                  ),
+                );
+              },
+              child: const Text(
+                'TCP Sender Test',
+              ),
+            ),
+
           ],
         ),
       ),

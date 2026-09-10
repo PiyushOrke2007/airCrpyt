@@ -1,5 +1,4 @@
 import 'package:aircrypt/core/database/trash_repository_interface.dart';
-import 'package:sqflite/sqflite.dart';
 
 import '../models/trash_item.dart';
 import 'database_service.dart';
@@ -11,6 +10,7 @@ class TrashRepository implements TrashRepositoryInterface {
     DatabaseService? databaseService,
   }) : _databaseService = databaseService ?? DatabaseService();
 
+  @override
   Future<void> insertTrashItem(TrashItem item) async {
     final database = await _databaseService.database;
 
@@ -27,7 +27,7 @@ class TrashRepository implements TrashRepositoryInterface {
       },
     );
   }
-
+  @override
   Future<TrashItem?> getTrashItem(String id) async {
     final database = await _databaseService.database;
 
@@ -44,7 +44,7 @@ class TrashRepository implements TrashRepositoryInterface {
 
     return _fromMap(results.first);
   }
-
+  @override
   Future<List<TrashItem>> getAllTrashItems() async {
     final database = await _databaseService.database;
 
@@ -55,7 +55,7 @@ class TrashRepository implements TrashRepositoryInterface {
 
     return results.map(_fromMap).toList();
   }
-
+  @override
   Future<void> deleteTrashItem(String id) async {
     final database = await _databaseService.database;
 
@@ -65,7 +65,7 @@ class TrashRepository implements TrashRepositoryInterface {
       whereArgs: [id],
     );
   }
-
+  @override
   Future<List<TrashItem>> getExpiredItems(
       DateTime now,
       ) async {

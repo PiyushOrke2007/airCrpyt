@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'file_storage.dart';
 
 class FileStorageService implements FileStorage {
-  static const String _rootDirectoryName = 'P2PShare';
+  static const String _rootDirectoryName = 'airCrypt';
 
   static const String receivedDirectoryName = 'Received';
   static const String sentDirectoryName = 'Sent';

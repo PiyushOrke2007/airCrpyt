@@ -34,31 +34,64 @@ class DatabaseService {
       },
 
       onCreate: (Database database, int version) async {
-        await database.execute('''
-    CREATE TABLE transfers (
-      id TEXT PRIMARY KEY,
-      type TEXT NOT NULL,
-      status TEXT NOT NULL,
-      peer_device_id TEXT NOT NULL,
-      peer_device_name TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      completed_at TEXT,
-      total_size INTEGER NOT NULL
-    )
-  ''');
+        await database.execute(
+            '''CREATE TABLE transfers (
+                id TEXT PRIMARY KEY,
+                type TEXT NOT NULL,
+                status TEXT NOT NULL,
+                peer_device_id TEXT NOT NULL,
+                peer_device_name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                completed_at TEXT,
+                total_size INTEGER NOT NULL
+          )'''
+        );
       },
       onUpgrade: (Database database, int oldVersion, int newVersion) async {
+        if (oldVersion < 2) {
+          await database.execute(
+              '''CREATE TABLE transfers (
+                  id TEXT PRIMARY KEY,
+                  type TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  peer_device_id TEXT NOT NULL,
+                  peer_device_name TEXT NOT NULL,
+                  created_at TEXT NOT NULL,
+                  completed_at TEXT,
+                  total_size INTEGER NOT NULL
+              )'''
+          );
+        }
+
+        if (oldVersion < 3) {
+          await database.execute(
+              '''CREATE TABLE transfer_files (
+                  id TEXT PRIMARY KEY,
+                  transfer_id TEXT NOT NULL,
+                  file_name TEXT NOT NULL,
+                  relative_path TEXT,
+                  file_size INTEGER NOT NULL,
+                  status TEXT NOT NULL,
+                  source_path TEXT,
+                  saved_path TEXT,
+                  FOREIGN KEY (transfer_id)
+                    REFERENCES transfers(id)
+                    ON DELETE CASCADE
+            )'''
+          );
+        }
+
         if (oldVersion < 4) {
-          await database.execute('''
-    CREATE TABLE trash (
-      id TEXT PRIMARY KEY,
-      file_id TEXT NOT NULL,
-      original_path TEXT NOT NULL,
-      trash_path TEXT NOT NULL,
-      deleted_at TEXT NOT NULL,
-      permanent_delete_at TEXT NOT NULL
-    )
-  ''');
+          await database.execute(
+              '''CREATE TABLE trash (
+                   id TEXT PRIMARY KEY,
+                   file_id TEXT NOT NULL,
+                   original_path TEXT NOT NULL,
+                   trash_path TEXT NOT NULL,
+                   deleted_at TEXT NOT NULL,
+                   permanent_delete_at TEXT NOT NULL
+             )'''
+          );
         }
       },
     );
