@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'features/settings/settings_screen.dart';
-import 'core/services/device_identity_service.dart';
+
+import 'features/files/received_files_screen.dart';
+import 'features/history/transfer_history_screen.dart';
+import 'features/trash/trash_screen.dart';
 
 void main() {
   runApp(const AircryptApp());
@@ -53,14 +56,12 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Spacer(),
 
+              const SizedBox(height: 24),
               const Icon(
                 Icons.wifi_lock,
                 size: 80,
               ),
-
-              const SizedBox(height: 24),
 
               const Text(
                 'Secure Offline Sharing',
@@ -78,7 +79,7 @@ class HomeScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 40),
+              const Spacer(),
 
               FilledButton.icon(
                 onPressed: () {
@@ -98,6 +99,51 @@ class HomeScreen extends StatelessWidget {
                 label: const Text('Receive Files'),
               ),
 
+              const Spacer(),
+
+              ListTile(
+                leading: const Icon(Icons.folder),
+                title: const Text('Received Files'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                      const ReceivedFilesScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.history),
+                title: const Text('Transfer History'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                      const TransferHistoryScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text('Trash'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const TrashScreen(),
+                    ),
+                  );
+                },
+              ),
               const Spacer(),
             ],
           ),

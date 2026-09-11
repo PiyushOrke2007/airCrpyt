@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:aircrypt/core/database/database_service.dart';
@@ -15,7 +14,9 @@ void main() {
   });
 
   test('trash item can be inserted and retrieved', () async {
-    final databaseService = DatabaseService();
+    final databaseService = DatabaseService(
+      databaseName: 'trash_repository_test.db',
+    );
     final database = await databaseService.database;
 
     await database.delete('trash');
@@ -57,7 +58,9 @@ void main() {
   });
 
   test('expired trash items can be found', () async {
-    final databaseService = DatabaseService();
+    final databaseService = DatabaseService(
+      databaseName: 'trash_repository_test.db',
+    );
     final database = await databaseService.database;
 
     await database.delete('trash');

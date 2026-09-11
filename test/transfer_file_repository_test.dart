@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:aircrypt/core/database/database_service.dart';
@@ -16,7 +15,9 @@ void main() {
   });
 
   test('multiple files can belong to one transfer', () async {
-    final databaseService = DatabaseService();
+    final databaseService = DatabaseService(
+      databaseName: 'transfer_file_test.db',
+    );
 
     final database = await databaseService.database;
 
