@@ -1,17 +1,26 @@
-import 'dart:async';
-import 'dart:convert';
+﻿import 'dart:async';
 import 'dart:io';
+
+import 'incoming_message.dart';
+import 'tcp_connection.dart';
 
 class TcpServer {
   ServerSocket? _serverSocket;
 
-  final StreamController<String> _messagesController =
-  StreamController<String>.broadcast();
+  final StreamController<IncomingMessage>
+  _messagesController =
+  StreamController<IncomingMessage>.broadcast();
 
-  Stream<String> get messages =>
+  final List<TcpConnection> _connections = [];
+
+  Stream<IncomingMessage> get messages =>
       _messagesController.stream;
 
-  bool get isRunning => _serverSocket != null;
+  bool get isRunning =>
+      _serverSocket != null;
+
+  List<TcpConnection> get activeConnections =>
+      List.unmodifiable(_connections);
 
   Future<int> start({
     int port = 5000,
@@ -30,51 +39,77 @@ class TcpServer {
 
     _serverSocket!.listen(
       _handleConnection,
-      onError: (Object error) {
-        _messagesController.addError(error);
+      onError: (
+          Object error,
+          StackTrace stackTrace,
+          ) {
+        _messagesController.addError(
+          error,
+          stackTrace,
+        );
       },
     );
 
     return _serverSocket!.port;
   }
 
-  Future<void> _handleConnection(
-      Socket socket,
-      ) async {
-    try {
-      await for (final data in socket) {
-        final message = utf8.decode(
-          data,
-          allowMalformed: false,
-        );
+  void _handleConnection(Socket socket) {
+    final connection = TcpConnection(socket);
 
-        _messagesController.add(message);
-      }
-    } catch (error, stackTrace) {
-      _messagesController.addError(
-        error,
-        stackTrace,
-      );
-    } finally {
-      await socket.close();
-    }
+    _connections.add(connection);
+
+    connection.messages.listen(
+          (message) {
+        if (!_messagesController.isClosed) {
+          _messagesController.add(
+            IncomingMessage(
+              connection: connection,
+              message: message,
+            ),
+          );
+        }
+      },
+      onError: (
+          Object error,
+          StackTrace stackTrace,
+          ) {
+        if (!_messagesController.isClosed) {
+          _messagesController.addError(
+            error,
+            stackTrace,
+          );
+        }
+      },
+      onDone: () {
+        _connections.remove(connection);
+      },
+    );
   }
 
   Future<void> stop() async {
-    final socket = _serverSocket;
+    final server = _serverSocket;
 
-    if (socket == null) {
+    if (server == null) {
       return;
     }
 
     _serverSocket = null;
 
-    await socket.close();
+    await server.close();
+
+    final connections =
+    List<TcpConnection>.from(_connections);
+
+    for (final connection in connections) {
+      await connection.close();
+    }
+
+    _connections.clear();
   }
 
   Future<void> dispose() async {
     await stop();
+
     await _messagesController.close();
   }
-  
 }

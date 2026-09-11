@@ -1,7 +1,5 @@
-import 'dart:convert';
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 
-import 'message_type.dart';
 import 'protocol_message.dart';
 
 class ProtocolEncoder {

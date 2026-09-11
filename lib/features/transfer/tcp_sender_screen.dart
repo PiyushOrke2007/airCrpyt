@@ -1,5 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'dart:async';
 
+import 'package:flutter/material.dart';
+import 'protocol/message_type.dart';
+import 'protocol/protocol_message.dart';
 import 'tcp_client.dart';
 
 class TcpSenderScreen extends StatefulWidget {
@@ -13,6 +16,8 @@ class TcpSenderScreen extends StatefulWidget {
 class _TcpSenderScreenState
     extends State<TcpSenderScreen> {
   final TcpClient _client = TcpClient();
+
+  StreamSubscription<ProtocolMessage>? _messageSubscription;
 
   final TextEditingController _ipController =
   TextEditingController(
@@ -44,6 +49,24 @@ class _TcpSenderScreenState
       setState(() {
         _status = 'Connected';
       });
+
+
+
+      _messageSubscription =
+          _client.messages.listen(
+                (message) {
+              if (!mounted) {
+                return;
+              }
+
+              setState(() {
+                _status =
+                '${message.type.name}: '
+                    '${message.textPayload}';
+              });
+            },
+          );
+
     } catch (error) {
       if (!mounted) {
         return;
@@ -57,8 +80,11 @@ class _TcpSenderScreenState
 
   Future<void> _sendMessage() async {
     try {
-      await _client.sendLine(
-        'Hello from Aircrypt',
+      await _client.sendMessage(
+        ProtocolMessage.text(
+          type: MessageType.hello,
+          text: 'Hello from Aircrypt',
+        ),
       );
 
       if (!mounted) {
@@ -93,6 +119,7 @@ class _TcpSenderScreenState
 
   @override
   void dispose() {
+    _messageSubscription?.cancel();
     _ipController.dispose();
     _client.disconnect();
     super.dispose();

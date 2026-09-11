@@ -1,7 +1,6 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 
 import 'protocol_decoder.dart';
-import 'protocol_encoder.dart';
 import 'protocol_message.dart';
 
 class ProtocolStreamParser {

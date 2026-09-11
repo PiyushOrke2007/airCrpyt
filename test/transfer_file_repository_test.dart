@@ -15,7 +15,9 @@ void main() {
   });
 
   test('multiple files can belong to one transfer', () async {
-    final databaseService = DatabaseService();
+    final databaseService = DatabaseService(
+      databaseName: 'transfer_file_test.db',
+    );
 
     final database = await databaseService.database;
 

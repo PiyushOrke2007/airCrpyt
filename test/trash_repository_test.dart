@@ -14,7 +14,9 @@ void main() {
   });
 
   test('trash item can be inserted and retrieved', () async {
-    final databaseService = DatabaseService();
+    final databaseService = DatabaseService(
+      databaseName: 'trash_repository_test.db',
+    );
     final database = await databaseService.database;
 
     await database.delete('trash');
@@ -56,7 +58,9 @@ void main() {
   });
 
   test('expired trash items can be found', () async {
-    final databaseService = DatabaseService();
+    final databaseService = DatabaseService(
+      databaseName: 'trash_repository_test.db',
+    );
     final database = await databaseService.database;
 
     await database.delete('trash');

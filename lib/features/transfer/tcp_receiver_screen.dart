@@ -1,8 +1,10 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-
+import 'incoming_message.dart';
+import 'protocol/message_type.dart';
+import 'protocol/protocol_message.dart';
 import 'tcp_server.dart';
 
 class TcpReceiverScreen extends StatefulWidget {
@@ -17,7 +19,8 @@ class _TcpReceiverScreenState
     extends State<TcpReceiverScreen> {
   final TcpServer _server = TcpServer();
 
-  StreamSubscription<String>? _messageSubscription;
+  StreamSubscription<IncomingMessage>?
+  _messageSubscription;
 
   String _status = 'Starting...';
   String _lastMessage = 'No message received.';
@@ -49,15 +52,15 @@ class _TcpReceiverScreenState
           final value =
               '${interface.name}: ${address.address}';
 
-          // Add to the list used by the UI.
+          // Add the address to the list used by the UI.
           addresses.add(value);
 
-          // Also print to the debug console.
+          // Also print it to the debug console.
           debugPrint(value);
         }
       }
 
-      // Update the UI with the detected addresses.
+      // Update the UI.
       if (mounted) {
         setState(() {
           _ipAddresses = addresses;
@@ -65,17 +68,30 @@ class _TcpReceiverScreenState
         });
       }
 
-      // Listen for incoming TCP messages.
+      // Listen for incoming Aircrypt protocol messages.
       _messageSubscription =
           _server.messages.listen(
-                (message) {
+                (IncomingMessage incoming) async {
+              final message = incoming.message;
+
               if (!mounted) {
                 return;
               }
 
               setState(() {
-                _lastMessage = message;
+                _lastMessage =
+                '${message.type.name}: '
+                    '${message.textPayload}';
               });
+
+              if (message.type == MessageType.hello) {
+                await incoming.connection.sendMessage(
+                  ProtocolMessage.text(
+                    type: MessageType.helloResponse,
+                    text: 'Aircrypt Hello Response',
+                  ),
+                );
+              }
             },
             onError: (Object error) {
               if (!mounted) {
@@ -155,7 +171,9 @@ class _TcpReceiverScreenState
                 ..._ipAddresses.map(
                       (address) => Padding(
                     padding:
-                    const EdgeInsets.only(bottom: 8),
+                    const EdgeInsets.only(
+                      bottom: 8,
+                    ),
                     child: SelectableText(address),
                   ),
                 ),

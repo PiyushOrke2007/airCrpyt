@@ -1,7 +1,23 @@
+﻿import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
+
+import 'protocol/protocol_encoder.dart';
+import 'protocol/protocol_message.dart';
+import 'protocol/protocol_stream_parser.dart';
 
 class TcpClient {
   Socket? _socket;
+
+  final StreamController<ProtocolMessage>
+  _messagesController =
+  StreamController<ProtocolMessage>.broadcast();
+
+  final ProtocolStreamParser _parser =
+  ProtocolStreamParser();
+
+  Stream<ProtocolMessage> get messages =>
+      _messagesController.stream;
 
   bool get isConnected => _socket != null;
 
@@ -15,14 +31,43 @@ class TcpClient {
       );
     }
 
-    _socket = await Socket.connect(
+    final socket = await Socket.connect(
       host,
       port,
       timeout: const Duration(seconds: 5),
     );
+
+    _socket = socket;
+
+    socket.listen(
+      _handleData,
+      onError: _handleError,
+      onDone: _handleDone,
+      cancelOnError: false,
+    );
   }
 
-  Future<void> sendMessage(String message) async {
+  void _handleData(List<int> data) {
+    final messages = _parser.addData(
+      Uint8List.fromList(data),
+    );
+
+    for (final message in messages) {
+      _messagesController.add(message);
+    }
+  }
+
+  void _handleError(Object error) {
+    _messagesController.addError(error);
+  }
+
+  void _handleDone() {
+    _socket = null;
+  }
+
+  Future<void> sendMessage(
+      ProtocolMessage message,
+      ) async {
     final socket = _socket;
 
     if (socket == null) {
@@ -31,12 +76,13 @@ class TcpClient {
       );
     }
 
-    socket.write(message);
-    await socket.flush();
-  }
+    final data = ProtocolEncoder.encode(
+      message,
+    );
 
-  Future<void> sendLine(String message) async {
-    await sendMessage('$message\n');
+    socket.add(data);
+
+    await socket.flush();
   }
 
   Future<void> disconnect() async {
@@ -50,5 +96,10 @@ class TcpClient {
 
     await socket.flush();
     await socket.close();
+  }
+
+  Future<void> dispose() async {
+    await disconnect();
+    await _messagesController.close();
   }
 }

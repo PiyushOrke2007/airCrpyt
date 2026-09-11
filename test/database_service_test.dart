@@ -12,7 +12,9 @@ void main() {
   });
 
   test('database can be opened', () async {
-    final service = DatabaseService();
+    final service = DatabaseService(
+      databaseName: 'database_service_test.db',
+    );
 
     final database = await service.database;
 
