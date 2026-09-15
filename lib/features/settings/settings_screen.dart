@@ -17,6 +17,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _deviceNameController =
   TextEditingController();
 
+
   bool _isLoading = true;
 
   @override

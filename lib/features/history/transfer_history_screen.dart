@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/database/database_service.dart';
+import '../../core/database/transfer_repository.dart';
 import '../../core/models/transfer.dart';
 
 class TransferHistoryScreen extends StatefulWidget {
@@ -15,8 +15,8 @@ class TransferHistoryScreen extends StatefulWidget {
 
 class _TransferHistoryScreenState
     extends State<TransferHistoryScreen> {
-  final DatabaseService _databaseService =
-  DatabaseService();
+  final TransferRepository _transferRepository =
+  TransferRepository();
 
   List<Transfer> _transfers = [];
   bool _isLoading = true;
@@ -28,39 +28,8 @@ class _TransferHistoryScreenState
   }
 
   Future<void> _loadTransfers() async {
-    final database =
-    await _databaseService.database;
-
-    final rows = await database.query(
-      'transfers',
-      orderBy: 'created_at DESC',
-    );
-
-    final transfers = rows.map((row) {
-      return Transfer(
-        id: row['id']! as String,
-        type: TransferType.values.byName(
-          row['type']! as String,
-        ),
-        status: TransferStatus.values.byName(
-          row['status']! as String,
-        ),
-        peerDeviceId:
-        row['peer_device_id']! as String,
-        peerDeviceName:
-        row['peer_device_name']! as String,
-        createdAt: DateTime.parse(
-          row['created_at']! as String,
-        ),
-        completedAt: row['completed_at'] == null
-            ? null
-            : DateTime.parse(
-          row['completed_at']! as String,
-        ),
-        totalSize:
-        row['total_size']! as int,
-      );
-    }).toList();
+    final transfers =
+    await _transferRepository.getAllTransfers();
 
     if (!mounted) {
       return;

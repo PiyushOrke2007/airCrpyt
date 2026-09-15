@@ -44,6 +44,17 @@ class TransferRepository {
     return _fromMap(results.first);
   }
 
+  Future<List<Transfer>> getAllTransfers() async {
+    final database = await _databaseService.database;
+
+    final results = await database.query(
+      'transfers',
+      orderBy: 'created_at DESC',
+    );
+
+    return results.map(_fromMap).toList();
+  }
+
   Transfer _fromMap(Map<String, Object?> map) {
     return Transfer(
       id: map['id']! as String,
