@@ -1,15 +1,24 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'key_value_storage.dart';
+import 'shared_preferences_storage.dart';
 
 class SettingsService {
   static const String _deviceNameKey = 'device_name';
 
+  final KeyValueStorage _keyValueStorage;
+
+  SettingsService({
+    KeyValueStorage? keyValueStorage,
+  }) : _keyValueStorage =
+      keyValueStorage ?? SharedPreferencesStorage();
+
   Future<String?> getDeviceName() async {
-    final preferences = await SharedPreferences.getInstance();
-    return preferences.getString(_deviceNameKey);
+    return _keyValueStorage.getString(_deviceNameKey);
   }
 
   Future<void> saveDeviceName(String name) async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_deviceNameKey, name);
+    await _keyValueStorage.setString(
+      _deviceNameKey,
+      name,
+    );
   }
 }
