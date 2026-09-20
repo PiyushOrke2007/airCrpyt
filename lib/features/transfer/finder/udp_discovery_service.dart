@@ -3,41 +3,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../../core/services/local_device_service.dart';
-
-enum DeviceStatus { online, offline }
-
-class DiscoveredDevice {
-  final String id;
-  final String name;
-  final String ipAddress;
-  final int port;
-  final DeviceStatus status;
-  final DateTime lastSeen;
-
-  DiscoveredDevice({
-    required this.id,
-    required this.name,
-    required this.ipAddress,
-    required this.port,
-    required this.status,
-    required this.lastSeen,
-  });
-
-  DiscoveredDevice copyWith({
-    DeviceStatus? status,
-    DateTime? lastSeen,
-    String? name,
-  }) {
-    return DiscoveredDevice(
-      id: id,
-      name: name ?? this.name,
-      ipAddress: ipAddress,
-      port: port,
-      status: status ?? this.status,
-      lastSeen: lastSeen ?? this.lastSeen,
-    );
-  }
-}
+import 'models/discovered_device.dart';
 
 class UdpDiscoveryService {
   static const int udpPort = 5500;
