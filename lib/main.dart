@@ -4,6 +4,7 @@ import 'features/settings/settings_screen.dart';
 import 'features/files/received_files_screen.dart';
 import 'features/history/transfer_history_screen.dart';
 import 'features/trash/trash_screen.dart';
+import 'features/transfer/finder/device_screen.dart';
 
 void main() {
   runApp(const AircryptApp());
@@ -83,6 +84,12 @@ class HomeScreen extends StatelessWidget {
 
               FilledButton.icon(
                 onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const DeviceScreen(),
+                    ),
+                  );
                   // Sending functionality will be added later.
                 },
                 icon: const Icon(Icons.upload),
