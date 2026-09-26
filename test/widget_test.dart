@@ -7,6 +7,6 @@ void main() {
 
     expect(find.text('Aircrypt'), findsOneWidget);
     expect(find.text('Send Files'), findsOneWidget);
-    expect(find.text('Receive Files'), findsOneWidget);
+    expect(find.text('Ready to receive files automatically'), findsOneWidget);
   });
 }

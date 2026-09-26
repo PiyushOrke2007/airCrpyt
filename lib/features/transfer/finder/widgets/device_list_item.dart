@@ -1,21 +1,28 @@
 import 'package:flutter/material.dart';
+
 import '../models/discovered_device.dart';
 
 class DeviceListItem extends StatelessWidget {
   final DiscoveredDevice device;
+  final bool isSelected;
+  final ValueChanged<bool?>? onSelectionChanged;
   final VoidCallback? onTap;
 
   const DeviceListItem({
     super.key,
     required this.device,
+    this.isSelected = false,
+    this.onSelectionChanged,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final isOnline = device.status == DeviceStatus.online;
-    return ListTile(
-      leading: Icon(
+    return CheckboxListTile(
+      value: isSelected,
+      onChanged: isOnline ? onSelectionChanged : null,
+      secondary: Icon(
         isOnline ? Icons.devices : Icons.devices_other,
         color: isOnline ? Colors.green : Colors.grey,
       ),
@@ -27,8 +34,6 @@ class DeviceListItem extends StatelessWidget {
           fontWeight: FontWeight.w500,
         ),
       ),
-      trailing: isOnline ? const Icon(Icons.chevron_right) : null,
-      onTap: isOnline ? onTap : null,
     );
   }
 }
