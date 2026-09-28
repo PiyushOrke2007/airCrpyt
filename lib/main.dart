@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'features/settings/settings_screen.dart';
 
 import 'features/files/received_files_screen.dart';
 import 'features/history/transfer_history_screen.dart';
-import 'features/trash/trash_screen.dart';
+import 'features/settings/settings_screen.dart';
+import 'features/transfer/file_selection_screen.dart';
 import 'features/transfer/finder/device_screen.dart';
+import 'features/trash/trash_screen.dart';
 
 void main() {
   runApp(const AircryptApp());
@@ -18,9 +19,7 @@ class AircryptApp extends StatelessWidget {
     return MaterialApp(
       title: 'Aircrypt',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-      ),
+      theme: ThemeData(useMaterial3: true),
       home: const HomeScreen(),
     );
   }
@@ -32,7 +31,6 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
       appBar: AppBar(
         title: const Text('Aircrypt'),
         centerTitle: true,
@@ -43,71 +41,78 @@ class HomeScreen extends StatelessWidget {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const SettingsScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
               );
             },
           ),
         ],
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-
-              const SizedBox(height: 24),
-              const Icon(
-                Icons.wifi_lock,
-                size: 80,
-              ),
-
+              const SizedBox(height: 16),
+              const Icon(Icons.wifi_lock, size: 80),
+              const SizedBox(height: 12),
               const Text(
                 'Secure Offline Sharing',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-
-              const SizedBox(height: 12),
-
+              const SizedBox(height: 8),
               const Text(
-                'Transfer files directly between nearby devices.',
+                'Transfer files directly between nearby devices on local Wi-Fi.',
                 textAlign: TextAlign.center,
               ),
-
-              const Spacer(),
-
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.wifi_calling_3, size: 20, color: Colors.green),
+                    SizedBox(width: 8),
+                    Text(
+                      'Ready to receive files automatically',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const DeviceScreen(),
+                      builder: (_) => const FileSelectionScreen(),
                     ),
                   );
-                  // Sending functionality will be added later.
                 },
                 icon: const Icon(Icons.upload),
                 label: const Text('Send Files'),
               ),
-
-              const SizedBox(height: 16),
-
+              const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: () {
-                  // Receiving functionality will be added later.
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DeviceScreen()),
+                  );
                 },
                 icon: const Icon(Icons.download),
-                label: const Text('Receive Files'),
+                label: const Text('Receive / Nearby Devices'),
               ),
-
-              const Spacer(),
-
+              const SizedBox(height: 24),
               ListTile(
                 leading: const Icon(Icons.folder),
                 title: const Text('Received Files'),
@@ -116,13 +121,11 @@ class HomeScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                      const ReceivedFilesScreen(),
+                      builder: (_) => const ReceivedFilesScreen(),
                     ),
                   );
                 },
               ),
-
               ListTile(
                 leading: const Icon(Icons.history),
                 title: const Text('Transfer History'),
@@ -131,13 +134,11 @@ class HomeScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                      const TransferHistoryScreen(),
+                      builder: (_) => const TransferHistoryScreen(),
                     ),
                   );
                 },
               ),
-
               ListTile(
                 leading: const Icon(Icons.delete_outline),
                 title: const Text('Trash'),
@@ -145,13 +146,10 @@ class HomeScreen extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => const TrashScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const TrashScreen()),
                   );
                 },
               ),
-              const Spacer(),
             ],
           ),
         ),

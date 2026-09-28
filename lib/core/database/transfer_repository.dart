@@ -5,25 +5,43 @@ import 'database_service.dart';
 class TransferRepository {
   final DatabaseService _databaseService;
 
-  TransferRepository({
-    DatabaseService? databaseService,
-  }) : _databaseService = databaseService ?? DatabaseService();
+  TransferRepository({DatabaseService? databaseService})
+    : _databaseService = databaseService ?? DatabaseService();
 
   Future<void> insertTransfer(Transfer transfer) async {
     final database = await _databaseService.database;
 
-    await database.insert(
+    await database.insert('transfers', {
+      'id': transfer.id,
+      'type': transfer.type.name,
+      'status': transfer.status.name,
+      'peer_device_id': transfer.peerDeviceId,
+      'peer_device_name': transfer.peerDeviceName,
+      'created_at': transfer.createdAt.toIso8601String(),
+      'completed_at': transfer.completedAt?.toIso8601String(),
+      'total_size': transfer.totalSize,
+    });
+  }
+
+  Future<void> updateTransferStatus(
+    String id,
+    TransferStatus status, {
+    DateTime? completedAt,
+  }) async {
+    final database = await _databaseService.database;
+    final values = <String, Object?>{'status': status.name};
+    if (completedAt != null ||
+        status == TransferStatus.completed ||
+        status == TransferStatus.failed) {
+      values['completed_at'] = (completedAt ?? DateTime.now())
+          .toIso8601String();
+    }
+
+    await database.update(
       'transfers',
-      {
-        'id': transfer.id,
-        'type': transfer.type.name,
-        'status': transfer.status.name,
-        'peer_device_id': transfer.peerDeviceId,
-        'peer_device_name': transfer.peerDeviceName,
-        'created_at': transfer.createdAt.toIso8601String(),
-        'completed_at': transfer.completedAt?.toIso8601String(),
-        'total_size': transfer.totalSize,
-      },
+      values,
+      where: 'id = ?',
+      whereArgs: [id],
     );
   }
 
@@ -58,49 +76,53 @@ class TransferRepository {
   Transfer _fromMap(Map<String, Object?> map) {
     return Transfer(
       id: map['id']! as String,
-      type: TransferType.values.byName(
-        map['type']! as String,
-      ),
-      status: TransferStatus.values.byName(
-        map['status']! as String,
-      ),
+      type: TransferType.values.byName(map['type']! as String),
+      status: TransferStatus.values.byName(map['status']! as String),
       peerDeviceId: map['peer_device_id']! as String,
       peerDeviceName: map['peer_device_name']! as String,
-      createdAt: DateTime.parse(
-        map['created_at']! as String,
-      ),
+      createdAt: DateTime.parse(map['created_at']! as String),
       completedAt: map['completed_at'] == null
           ? null
-          : DateTime.parse(
-        map['completed_at']! as String,
-      ),
+          : DateTime.parse(map['completed_at']! as String),
       totalSize: map['total_size']! as int,
     );
   }
 
-  Future<void> insertTransferFile(
-      TransferFile transferFile,
-      ) async {
+  Future<void> insertTransferFile(TransferFile transferFile) async {
     final database = await _databaseService.database;
 
-    await database.insert(
+    await database.insert('transfer_files', {
+      'id': transferFile.id,
+      'transfer_id': transferFile.transferId,
+      'file_name': transferFile.fileName,
+      'relative_path': transferFile.relativePath,
+      'file_size': transferFile.fileSize,
+      'status': transferFile.status.name,
+      'source_path': transferFile.sourcePath,
+      'saved_path': transferFile.savedPath,
+    });
+  }
+
+  Future<void> updateTransferFileStatus(
+    String id,
+    TransferFileStatus status, {
+    String? savedPath,
+  }) async {
+    final database = await _databaseService.database;
+    final values = <String, Object?>{'status': status.name};
+    if (savedPath != null) {
+      values['saved_path'] = savedPath;
+    }
+
+    await database.update(
       'transfer_files',
-      {
-        'id': transferFile.id,
-        'transfer_id': transferFile.transferId,
-        'file_name': transferFile.fileName,
-        'relative_path': transferFile.relativePath,
-        'file_size': transferFile.fileSize,
-        'status': transferFile.status.name,
-        'source_path': transferFile.sourcePath,
-        'saved_path': transferFile.savedPath,
-      },
+      values,
+      where: 'id = ?',
+      whereArgs: [id],
     );
   }
 
-  Future<List<TransferFile>> getTransferFiles(
-      String transferId,
-      ) async {
+  Future<List<TransferFile>> getTransferFiles(String transferId) async {
     final database = await _databaseService.database;
 
     final results = await database.query(
@@ -113,23 +135,16 @@ class TransferRepository {
     return results.map(_fileFromMap).toList();
   }
 
-  TransferFile _fileFromMap(
-      Map<String, Object?> map,
-      ) {
+  TransferFile _fileFromMap(Map<String, Object?> map) {
     return TransferFile(
       id: map['id']! as String,
       transferId: map['transfer_id']! as String,
       fileName: map['file_name']! as String,
       relativePath: map['relative_path'] as String?,
       fileSize: map['file_size']! as int,
-      status: TransferFileStatus.values.byName(
-        map['status']! as String,
-      ),
+      status: TransferFileStatus.values.byName(map['status']! as String),
       sourcePath: map['source_path'] as String?,
       savedPath: map['saved_path'] as String?,
     );
   }
-
-
-
 }
