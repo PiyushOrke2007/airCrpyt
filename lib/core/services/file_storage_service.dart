@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
@@ -15,14 +16,10 @@ class FileStorageService implements FileStorage {
 
   @override
   Future<Directory> getRootDirectory() async {
-    final baseDirectory =
-    await getApplicationDocumentsDirectory();
+    final baseDirectory = await getApplicationDocumentsDirectory();
 
     final rootDirectory = Directory(
-      path.join(
-        baseDirectory.path,
-        _rootDirectoryName,
-      ),
+      path.join(baseDirectory.path, _rootDirectoryName),
     );
 
     await rootDirectory.create(recursive: true);
@@ -31,8 +28,32 @@ class FileStorageService implements FileStorage {
   }
 
   @override
-  Future<Directory> getReceivedDirectory() {
-    return _getSubdirectory(receivedDirectoryName);
+  Future<Directory> getReceivedDirectory() async {
+    final downloadsDir = await getDownloadsDirectory();
+
+    if (downloadsDir != null) {
+      final receivedDirectory = Directory(
+        path.join(downloadsDir.path, _rootDirectoryName, receivedDirectoryName),
+      );
+
+      await receivedDirectory.create(recursive: true);
+
+      debugPrint('RECEIVED DIRECTORY: ${receivedDirectory.path}');
+
+      return receivedDirectory;
+    }
+
+    final rootDirectory = await getRootDirectory();
+
+    final receivedDirectory = Directory(
+      path.join(rootDirectory.path, receivedDirectoryName),
+    );
+
+    await receivedDirectory.create(recursive: true);
+
+    debugPrint('RECEIVED DIRECTORY FALLBACK: ${receivedDirectory.path}');
+
+    return receivedDirectory;
   }
 
   @override
@@ -50,17 +71,10 @@ class FileStorageService implements FileStorage {
     return _getSubdirectory(trashDirectoryName);
   }
 
-  Future<Directory> _getSubdirectory(
-      String name,
-      ) async {
+  Future<Directory> _getSubdirectory(String name) async {
     final rootDirectory = await getRootDirectory();
 
-    final directory = Directory(
-      path.join(
-        rootDirectory.path,
-        name,
-      ),
-    );
+    final directory = Directory(path.join(rootDirectory.path, name));
 
     await directory.create(recursive: true);
 
@@ -69,8 +83,7 @@ class FileStorageService implements FileStorage {
 
   @override
   Future<File> moveToTrash(File file) async {
-    final trashDirectory =
-    await getTrashDirectory();
+    final trashDirectory = await getTrashDirectory();
 
     final destination = path.join(
       trashDirectory.path,
@@ -81,24 +94,16 @@ class FileStorageService implements FileStorage {
   }
 
   @override
-  Future<File> restoreFromTrash(
-      File file,
-      String originalPath,
-      ) async {
-    final destinationParent =
-    Directory(path.dirname(originalPath));
+  Future<File> restoreFromTrash(File file, String originalPath) async {
+    final destinationParent = Directory(path.dirname(originalPath));
 
-    await destinationParent.create(
-      recursive: true,
-    );
+    await destinationParent.create(recursive: true);
 
     return file.rename(originalPath);
   }
 
   @override
-  Future<void> permanentlyDelete(
-      File file,
-      ) async {
+  Future<void> permanentlyDelete(File file) async {
     if (await file.exists()) {
       await file.delete();
     }
@@ -106,13 +111,10 @@ class FileStorageService implements FileStorage {
 
   @override
   Future<void> deleteTemporaryDirectory() async {
-    final directory =
-    await getTemporaryDirectory();
+    final directory = await getTemporaryDirectory();
 
     if (await directory.exists()) {
-      await directory.delete(
-        recursive: true,
-      );
+      await directory.delete(recursive: true);
     }
   }
 }
