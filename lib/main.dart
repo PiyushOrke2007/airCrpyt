@@ -66,29 +66,7 @@ class HomeScreen extends StatelessWidget {
                 'Transfer files directly between nearby devices on local Wi-Fi.',
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.wifi_calling_3, size: 20, color: Colors.green),
-                    SizedBox(width: 8),
-                    Text(
-                      'Ready to receive files automatically',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 44),
               FilledButton.icon(
                 onPressed: () {
                   Navigator.push(
