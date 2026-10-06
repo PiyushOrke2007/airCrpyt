@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/aircrypt_theme.dart';
+
 class DiscoveryStatusBar extends StatelessWidget {
   final String status;
   final VoidCallback onClose;
@@ -13,22 +15,42 @@ class DiscoveryStatusBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Theme.of(context).colorScheme.primaryContainer,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AirCryptColors.accentCyan.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AirCryptColors.accentCyan.withOpacity(0.4),
+          width: 1,
+        ),
+      ),
       child: Row(
         children: [
+          const Icon(
+            Icons.info_outline,
+            size: 18,
+            color: AirCryptColors.accentCyan,
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               status,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              style: const TextStyle(
+                color: AirCryptColors.accentCyan,
                 fontWeight: FontWeight.bold,
+                fontSize: 12,
+                letterSpacing: 0.5,
               ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: onClose,
+          GestureDetector(
+            onTap: onClose,
+            child: const Icon(
+              Icons.close,
+              size: 18,
+              color: AirCryptColors.accentCyan,
+            ),
           ),
         ],
       ),

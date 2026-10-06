@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/database/transfer_repository.dart';
 import '../../../../core/services/local_device_service.dart';
+import '../../../../core/theme/aircrypt_theme.dart';
+import '../../../../core/widgets/cyber_widgets.dart';
+import '../../../../core/widgets/radar_scan_widget.dart';
 import '../manager/transfer_manager.dart';
 import '../manager/transfer_sender.dart';
 import '../progress/transfer_progress_screen.dart';
@@ -66,16 +69,19 @@ class _DeviceScreenState extends State<DeviceScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Connection Request'),
-        content: Text('"$senderName" wants to connect.'),
+        title: const Text('Incoming Connection'),
+        content: Text('"$senderName" is attempting to establish a peer connection.'),
         actions: [
-          TextButton(
+          CyberButton(
+            label: 'DECLINE',
+            isPrimary: false,
+            isDanger: true,
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Reject'),
           ),
-          TextButton(
+          CyberButton(
+            label: 'AUTHORIZE',
+            isPrimary: true,
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Accept'),
           ),
         ],
       ),
@@ -240,14 +246,15 @@ class _DeviceScreenState extends State<DeviceScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(fileCount > 0 ? 'Select Recipients' : 'Available Devices'),
+        title: Text(
+          fileCount > 0 ? 'SELECT RECIPIENTS' : 'NEARBY AIRCRYPT DEVICES',
+          style: const TextStyle(letterSpacing: 1.2),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Reload',
-            onPressed: _isInitializing
-                ? null
-                : () => _handler.reloadDiscovery(),
+            icon: const Icon(Icons.refresh_outlined),
+            tooltip: 'Rescan Network',
+            onPressed: _isInitializing ? null : () => _handler.reloadDiscovery(),
           ),
         ],
       ),
@@ -261,33 +268,48 @@ class _DeviceScreenState extends State<DeviceScreen> {
                 onClose: () => setState(() => _currentStatus = null),
               ),
             if (_onlineDevices.isNotEmpty && fileCount > 0)
-              CheckboxListTile(
-                tristate: true,
-                value: _selectAllValue,
-                onChanged: _toggleSelectAll,
-                title: const Text(
-                  'Select All Devices',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  '$selectedDeviceCount of ${_onlineDevices.length} selected',
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: CyberCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  child: CheckboxListTile(
+                    tristate: true,
+                    value: _selectAllValue,
+                    onChanged: _toggleSelectAll,
+                    activeColor: AirCryptColors.accentCyan,
+                    checkColor: AirCryptColors.bgDark,
+                    title: const Text(
+                      'SELECT ALL DEVICES',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: AirCryptColors.accentCyan,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '$selectedDeviceCount of ${_onlineDevices.length} devices targeted',
+                      style: const TextStyle(
+                        color: AirCryptColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            if (fileCount > 0) const Divider(height: 1),
             Expanded(child: _buildBody()),
             if (fileCount > 0)
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: FilledButton.icon(
+                child: CyberButton(
                   onPressed: selectedDeviceCount == 0 || _isSending
                       ? null
                       : _startTransfer,
-                  icon: const Icon(Icons.send),
-                  label: Text(
-                    _isSending
-                        ? 'Sending...'
-                        : 'Send $fileCount file${fileCount == 1 ? '' : 's'} to $selectedDeviceCount device${selectedDeviceCount == 1 ? '' : 's'}',
-                  ),
+                  isLoading: _isSending,
+                  icon: Icons.shield_outlined,
+                  label: _isSending
+                      ? 'INITIATING ENCRYPTED TRANSFER...'
+                      : 'SECURE SEND ($fileCount FILE${fileCount == 1 ? '' : 'S'})',
                 ),
               ),
           ],
@@ -301,22 +323,39 @@ class _DeviceScreenState extends State<DeviceScreen> {
 
     if (_isInitializing) {
       return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Searching for nearby devices...'),
-          ],
+        child: RadarScanWidget(
+          statusText: 'INITIALIZING NETWORK DISCOVERY...',
+          helpText: 'Broadcasting UDP discovery beacons on local subnet.',
         ),
       );
     }
 
     if (_devices.isEmpty) {
-      return const Center(child: Text('No devices found nearby.'));
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const RadarScanWidget(
+                statusText: 'NO AIRCRYPT DEVICES FOUND',
+                helpText: 'Ensure both devices are connected to the same Wi-Fi network with AirCrypt active.',
+              ),
+              const SizedBox(height: 24),
+              CyberButton(
+                label: 'RESCAN LOCAL NETWORK',
+                icon: Icons.radar_outlined,
+                isPrimary: false,
+                onPressed: () => _handler.reloadDiscovery(),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _devices.length,
       itemBuilder: (context, index) {
         final device = _devices[index];
