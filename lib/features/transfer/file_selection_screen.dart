@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/theme/aircrypt_theme.dart';
+import '../../core/widgets/cyber_widgets.dart';
 import 'finder/device_screen.dart';
 
 class FileSelectionScreen extends StatefulWidget {
@@ -34,8 +36,9 @@ class _FileSelectionScreenState extends State<FileSelectionScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Failed to pick files: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick files: $e')),
+        );
       }
     }
   }
@@ -71,8 +74,7 @@ class _FileSelectionScreenState extends State<FileSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Select Files to Send'),
-        centerTitle: true,
+        title: const Text('SELECT FILES'),
       ),
       body: SafeArea(
         child: Padding(
@@ -80,35 +82,94 @@ class _FileSelectionScreenState extends State<FileSelectionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              OutlinedButton.icon(
-                onPressed: _pickFiles,
-                icon: const Icon(Icons.add),
-                label: const Text('Add Files'),
+              // Add Files Action
+              CyberCard(
+                showGlow: _selectedFiles.isEmpty,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.note_add_outlined,
+                      size: 36,
+                      color: AirCryptColors.accentCyan,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'STAGE FILES FOR TRANSFER',
+                      style: TextStyle(
+                        color: AirCryptColors.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Select files from local storage to send securely.',
+                      style: TextStyle(
+                        color: AirCryptColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    CyberButton(
+                      label: 'BROWSE / ADD FILES',
+                      icon: Icons.add,
+                      isPrimary: false,
+                      width: double.infinity,
+                      onPressed: _pickFiles,
+                    ),
+                  ],
+                ),
               ),
+
               const SizedBox(height: 16),
+
               if (_selectedFiles.isEmpty)
                 const Expanded(
                   child: Center(
-                    child: Text(
-                      'No files selected yet.\nTap "Add Files" to choose files to send.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.folder_open_outlined,
+                          size: 48,
+                          color: AirCryptColors.textMuted,
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          'No files staged for transmission.',
+                          style: TextStyle(color: AirCryptColors.textMuted),
+                        ),
+                      ],
                     ),
                   ),
                 )
               else ...[
-                Text(
-                  'Selected Files (${_selectedFiles.length}) — ${_formatSize(_totalSizeBytes)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                // File count summary header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'STAGED FILES (${_selectedFiles.length})',
+                      style: const TextStyle(
+                        color: AirCryptColors.textSecondary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    CyberBadge(
+                      label: _formatSize(_totalSizeBytes),
+                      color: AirCryptColors.accentCyan,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
+
                 Expanded(
-                  child: ListView.separated(
+                  child: ListView.builder(
                     itemCount: _selectedFiles.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final file = _selectedFiles[index];
                       final name = file.uri.pathSegments.last;
@@ -117,25 +178,110 @@ class _FileSelectionScreenState extends State<FileSelectionScreen> {
                         size = file.existsSync() ? file.lengthSync() : 0;
                       } catch (_) {}
 
-                      return ListTile(
-                        leading: const Icon(Icons.insert_drive_file),
-                        title: Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(_formatSize(size)),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.close, color: Colors.red),
-                          onPressed: () => _removeFile(index),
+                      return CyberCard(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AirCryptColors.accentCyan.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.insert_drive_file_outlined,
+                                color: AirCryptColors.accentCyan,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AirCryptColors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _formatSize(size),
+                                    style: const TextStyle(
+                                      color: AirCryptColors.textSecondary,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.close,
+                                color: AirCryptColors.accentRed,
+                                size: 20,
+                              ),
+                              onPressed: () => _removeFile(index),
+                            ),
+                          ],
                         ),
                       );
                     },
                   ),
                 ),
+
+                const SizedBox(height: 12),
+
+                // Pre-encryption status visualizer
+                CyberCard(
+                  borderColor: AirCryptColors.accentGreen.withOpacity(0.3),
+                  backgroundColor: AirCryptColors.accentGreen.withOpacity(0.06),
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.enhanced_encryption_outlined,
+                        color: AirCryptColors.accentGreen,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'ENCRYPTION PREPARATION READY',
+                              style: TextStyle(
+                                color: AirCryptColors.accentGreen,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                            Text(
+                              'Files will be encrypted with AES-256 before network transmission.',
+                              style: TextStyle(
+                                color: AirCryptColors.textSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
+
               const SizedBox(height: 16),
-              FilledButton.icon(
+
+              CyberButton(
                 onPressed: _selectedFiles.isEmpty
                     ? null
                     : () {
@@ -148,12 +294,10 @@ class _FileSelectionScreenState extends State<FileSelectionScreen> {
                           ),
                         );
                       },
-                icon: const Icon(Icons.arrow_forward),
-                label: Text(
-                  _selectedFiles.isEmpty
-                      ? 'Select Files First'
-                      : 'Next: Choose Recipients (${_selectedFiles.length})',
-                ),
+                icon: Icons.arrow_forward,
+                label: _selectedFiles.isEmpty
+                    ? 'SELECT FILES FIRST'
+                    : 'NEXT: CHOOSE RECIPIENTS (${_selectedFiles.length})',
               ),
             ],
           ),

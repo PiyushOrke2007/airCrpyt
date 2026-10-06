@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../core/services/device_identity_service.dart';
 import '../../core/services/settings_service.dart';
+import '../../core/theme/aircrypt_theme.dart';
+import '../../core/widgets/cyber_widgets.dart';
 import '../transfer/tcp_receiver_screen.dart';
 import '../transfer/tcp_sender_screen.dart';
 
@@ -13,10 +16,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final SettingsService _settingsService = SettingsService();
-
-  final TextEditingController _deviceNameController =
-  TextEditingController();
-
+  final TextEditingController _deviceNameController = TextEditingController();
 
   bool _isLoading = true;
 
@@ -29,8 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadDeviceName() async {
     final savedName = await _settingsService.getDeviceName();
 
-    _deviceNameController.text =
-        savedName ?? 'My Aircrypt Device';
+    _deviceNameController.text = savedName ?? 'My AirCrypt Node';
 
     if (mounted) {
       setState(() {
@@ -56,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Device name saved.'),
+          content: Text('Device identity updated successfully.'),
         ),
       );
     }
@@ -73,93 +72,126 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_isLoading) {
       return const Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child: CircularProgressIndicator(color: AirCryptColors.accentCyan),
         ),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: const Text('NODE CONFIGURATION'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Device Name',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              CyberCard(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'DEVICE NODE IDENTITY',
+                      style: TextStyle(
+                        color: AirCryptColors.accentCyan,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'This device identifier will be broadcast to nearby AirCrypt peers on local Wi-Fi subnet.',
+                      style: TextStyle(
+                        color: AirCryptColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: _deviceNameController,
+                      style: const TextStyle(color: AirCryptColors.textPrimary),
+                      decoration: const InputDecoration(
+                        labelText: 'Broadcasting Device Name',
+                        prefixIcon: Icon(Icons.badge_outlined, color: AirCryptColors.accentCyan),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    CyberButton(
+                      label: 'SAVE IDENTIFIER',
+                      icon: Icons.save_outlined,
+                      width: double.infinity,
+                      onPressed: _saveDeviceName,
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 8),
+              const SizedBox(height: 20),
 
-            const Text(
-              'This name will be visible to nearby Aircrypt users.',
-            ),
-
-            const SizedBox(height: 24),
-
-            TextField(
-              controller: _deviceNameController,
-              decoration: const InputDecoration(
-                labelText: 'Device name',
-                border: OutlineInputBorder(),
+              Text(
+                'DIAGNOSTICS & DEBUG',
+                style: TextStyle(
+                  color: AirCryptColors.textMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
               ),
-            ),
+              const SizedBox(height: 10),
 
-            const SizedBox(height: 20),
-
-            FilledButton(
-              onPressed: _saveDeviceName,
-              child: const Text('Save'),
-            ),
-
-            OutlinedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const DeviceIdDebugScreen(),
-                  ),
-                );
-              },
-              child: const Text('Show Device ID'),
-            ),
-
-            OutlinedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                    const TcpReceiverScreen(),
-                  ),
-                );
-              },
-              child: const Text(
-                'TCP Receiver Test',
+              CyberCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.fingerprint, color: AirCryptColors.accentCyan),
+                      title: const Text('Show Cryptographic Device ID'),
+                      trailing: const Icon(Icons.chevron_right, color: AirCryptColors.accentCyan),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const DeviceIdDebugScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.input, color: AirCryptColors.accentCyan),
+                      title: const Text('TCP Receiver Protocol Test'),
+                      trailing: const Icon(Icons.chevron_right, color: AirCryptColors.accentCyan),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const TcpReceiverScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.output, color: AirCryptColors.accentCyan),
+                      title: const Text('TCP Sender Protocol Test'),
+                      trailing: const Icon(Icons.chevron_right, color: AirCryptColors.accentCyan),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const TcpSenderScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-            OutlinedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                    const TcpSenderScreen(),
-                  ),
-                );
-              },
-              child: const Text(
-                'TCP Sender Test',
-              ),
-            ),
-
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -174,8 +206,7 @@ class DeviceIdDebugScreen extends StatefulWidget {
 }
 
 class _DeviceIdDebugScreenState extends State<DeviceIdDebugScreen> {
-  final DeviceIdentityService _identityService =
-  DeviceIdentityService();
+  final DeviceIdentityService _identityService = DeviceIdentityService();
 
   String _deviceId = 'Loading...';
 
@@ -199,14 +230,37 @@ class _DeviceIdDebugScreenState extends State<DeviceIdDebugScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Device Identity'),
+        title: const Text('DEVICE IDENTITY GUID'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: SelectableText(
-          _deviceId,
-          style: const TextStyle(
-            fontSize: 16,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: CyberCard(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'UNIQUE CRYPTOGRAPHIC NODE ID',
+                  style: TextStyle(
+                    color: AirCryptColors.accentCyan,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SelectableText(
+                  _deviceId,
+                  style: const TextStyle(
+                    color: AirCryptColors.textPrimary,
+                    fontFamily: 'monospace',
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

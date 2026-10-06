@@ -2,21 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../../core/database/transfer_repository.dart';
 import '../../core/models/transfer.dart';
+import '../../core/theme/aircrypt_theme.dart';
+import '../../core/widgets/cyber_widgets.dart';
 
 class TransferHistoryScreen extends StatefulWidget {
-  const TransferHistoryScreen({
-    super.key,
-  });
+  const TransferHistoryScreen({super.key});
 
   @override
-  State<TransferHistoryScreen> createState() =>
-      _TransferHistoryScreenState();
+  State<TransferHistoryScreen> createState() => _TransferHistoryScreenState();
 }
 
-class _TransferHistoryScreenState
-    extends State<TransferHistoryScreen> {
-  final TransferRepository _transferRepository =
-  TransferRepository();
+class _TransferHistoryScreenState extends State<TransferHistoryScreen> {
+  final TransferRepository _transferRepository = TransferRepository();
 
   List<Transfer> _transfers = [];
   bool _isLoading = true;
@@ -28,12 +25,9 @@ class _TransferHistoryScreenState
   }
 
   Future<void> _loadTransfers() async {
-    final transfers =
-    await _transferRepository.getAllTransfers();
+    final transfers = await _transferRepository.getAllTransfers();
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     setState(() {
       _transfers = transfers;
@@ -44,43 +38,44 @@ class _TransferHistoryScreenState
   String _statusText(TransferStatus status) {
     switch (status) {
       case TransferStatus.requesting:
-        return 'Requesting';
-
+        return 'REQUESTING';
       case TransferStatus.waitingForAcceptance:
-        return 'Waiting for acceptance';
-
+        return 'WAITING ACCEPTANCE';
       case TransferStatus.verifying:
-        return 'Verifying';
-
+        return 'VERIFYING';
       case TransferStatus.checkingStorage:
-        return 'Checking storage';
-
+        return 'CHECKING STORAGE';
       case TransferStatus.accepted:
-        return 'Accepted';
-
+        return 'ACCEPTED';
       case TransferStatus.transferring:
-        return 'Transferring';
-
+        return 'TRANSFERRING';
       case TransferStatus.paused:
-        return 'Paused';
-
+        return 'PAUSED';
       case TransferStatus.resuming:
-        return 'Resuming';
-
+        return 'RESUMING';
       case TransferStatus.verifyingFile:
-        return 'Verifying file';
-
+        return 'VERIFYING INTEGRITY';
       case TransferStatus.completed:
-        return 'Completed';
-
+        return 'COMPLETED';
       case TransferStatus.rejected:
-        return 'Rejected';
-
+        return 'REJECTED';
       case TransferStatus.cancelled:
-        return 'Cancelled';
-
+        return 'CANCELLED';
       case TransferStatus.failed:
-        return 'Failed';
+        return 'FAILED';
+    }
+  }
+
+  Color _statusColor(TransferStatus status) {
+    switch (status) {
+      case TransferStatus.completed:
+        return AirCryptColors.accentGreen;
+      case TransferStatus.rejected:
+      case TransferStatus.failed:
+      case TransferStatus.cancelled:
+        return AirCryptColors.accentRed;
+      default:
+        return AirCryptColors.accentCyan;
     }
   }
 
@@ -88,42 +83,105 @@ class _TransferHistoryScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Transfer History'),
+        title: const Text('TRANSFER AUDIT LOG'),
       ),
-      body: _isLoading
-          ? const Center(
-        child: CircularProgressIndicator(),
-      )
-          : _transfers.isEmpty
-          ? const Center(
-        child: Text(
-          'No transfers yet.',
-        ),
-      )
-          : ListView.builder(
-        itemCount: _transfers.length,
-        itemBuilder: (context, index) {
-          final transfer =
-          _transfers[index];
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: AirCryptColors.accentCyan),
+              )
+            : _transfers.isEmpty
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.history_toggle_off_outlined,
+                          size: 56,
+                          color: AirCryptColors.textMuted,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'NO TRANSFER RECORDS LOGGED',
+                          style: TextStyle(
+                            color: AirCryptColors.textSecondary,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Historical session logs will be stored locally.',
+                          style: TextStyle(
+                            color: AirCryptColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _transfers.length,
+                    itemBuilder: (context, index) {
+                      final transfer = _transfers[index];
+                      final isSend = transfer.type == TransferType.send;
+                      final clr = _statusColor(transfer.status);
 
-          final icon =
-          transfer.type ==
-              TransferType.send
-              ? Icons.upload
-              : Icons.download;
-
-          return ListTile(
-            leading: Icon(icon),
-            title: Text(
-              transfer.peerDeviceName,
-            ),
-            subtitle: Text(
-              _statusText(
-                transfer.status,
-              ),
-            ),
-          );
-        },
+                      return CyberCard(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        borderColor: clr.withOpacity(0.2),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: isSend
+                                    ? AirCryptColors.accentCyan.withOpacity(0.12)
+                                    : AirCryptColors.accentGreen.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                isSend ? Icons.upload_outlined : Icons.download_outlined,
+                                color: isSend ? AirCryptColors.accentCyan : AirCryptColors.accentGreen,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    transfer.peerDeviceName,
+                                    style: const TextStyle(
+                                      color: AirCryptColors.textPrimary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  CyberBadge(
+                                    label: _statusText(transfer.status),
+                                    color: clr,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              isSend ? 'OUTBOUND' : 'INBOUND',
+                              style: TextStyle(
+                                color: isSend ? AirCryptColors.accentCyan : AirCryptColors.accentGreen,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
       ),
     );
   }
