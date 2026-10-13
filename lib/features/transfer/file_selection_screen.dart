@@ -36,9 +36,8 @@ class _FileSelectionScreenState extends State<FileSelectionScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick files: $e')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to pick files: $e')));
       }
     }
   }
@@ -73,47 +72,48 @@ class _FileSelectionScreenState extends State<FileSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('SELECT FILES'),
-      ),
+      appBar: AppBar(title: const Text('AIRCRYPT // SEND')),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Add Files Action
+              const PageIntro(
+                title: 'BROADCAST / SEND FILES',
+                subtitle: 'Stage a payload, then choose a nearby recipient.',
+                icon: Icons.outbox_outlined,
+              ),
               CyberCard(
-                showGlow: _selectedFiles.isEmpty,
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
                     const Icon(
                       Icons.note_add_outlined,
-                      size: 36,
-                      color: AirCryptColors.accentCyan,
+                      size: 28,
+                      color: AirCryptColors.textPrimary,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 14),
                     const Text(
-                      'STAGE FILES FOR TRANSFER',
+                      '[ STAGE PAYLOAD ]',
                       style: TextStyle(
                         color: AirCryptColors.textPrimary,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        letterSpacing: 1.0,
+                        fontSize: 12,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     const Text(
-                      'Select files from local storage to send securely.',
+                      'Select files to stage your local transfer.',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AirCryptColors.textSecondary,
-                        fontSize: 12,
+                        fontSize: 10,
                       ),
                     ),
                     const SizedBox(height: 14),
                     CyberButton(
-                      label: 'BROWSE / ADD FILES',
+                      label: '[ SELECT FILES ]',
                       icon: Icons.add,
                       isPrimary: false,
                       width: double.infinity,
@@ -128,35 +128,24 @@ class _FileSelectionScreenState extends State<FileSelectionScreen> {
               if (_selectedFiles.isEmpty)
                 const Expanded(
                   child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.folder_open_outlined,
-                          size: 48,
-                          color: AirCryptColors.textMuted,
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          'No files staged for transmission.',
-                          style: TextStyle(color: AirCryptColors.textMuted),
-                        ),
-                      ],
+                    child: EmptyStateView(
+                      icon: Icons.folder_open_outlined,
+                      title: 'NO PAYLOAD STAGED',
+                      message: 'Select files above to prepare a transfer.',
                     ),
                   ),
                 )
               else ...[
-                // File count summary header
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'STAGED FILES (${_selectedFiles.length})',
+                      '[ STAGED FILES: ${_selectedFiles.length.toString().padLeft(2, '0')} ]',
                       style: const TextStyle(
                         color: AirCryptColors.textSecondary,
                         fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        letterSpacing: 1.2,
+                        fontSize: 10,
+                        letterSpacing: 0.2,
                       ),
                     ),
                     CyberBadge(
@@ -180,20 +169,16 @@ class _FileSelectionScreenState extends State<FileSelectionScreen> {
 
                       return CyberCard(
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                         child: Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AirCryptColors.accentCyan.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.insert_drive_file_outlined,
-                                color: AirCryptColors.accentCyan,
-                                size: 20,
-                              ),
+                            const Icon(
+                              Icons.insert_drive_file_outlined,
+                              color: AirCryptColors.textPrimary,
+                              size: 18,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -207,7 +192,7 @@ class _FileSelectionScreenState extends State<FileSelectionScreen> {
                                     style: const TextStyle(
                                       color: AirCryptColors.textPrimary,
                                       fontWeight: FontWeight.w600,
-                                      fontSize: 14,
+                                      fontSize: 11,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
@@ -238,16 +223,13 @@ class _FileSelectionScreenState extends State<FileSelectionScreen> {
 
                 const SizedBox(height: 12),
 
-                // Pre-encryption status visualizer
                 CyberCard(
-                  borderColor: AirCryptColors.accentGreen.withOpacity(0.3),
-                  backgroundColor: AirCryptColors.accentGreen.withOpacity(0.06),
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
                       const Icon(
                         Icons.enhanced_encryption_outlined,
-                        color: AirCryptColors.accentGreen,
+                        color: AirCryptColors.textPrimary,
                         size: 20,
                       ),
                       const SizedBox(width: 10),
@@ -256,16 +238,16 @@ class _FileSelectionScreenState extends State<FileSelectionScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: const [
                             Text(
-                              'ENCRYPTION PREPARATION READY',
+                              '[ PAYLOAD READY ]',
                               style: TextStyle(
-                                color: AirCryptColors.accentGreen,
+                                color: AirCryptColors.textPrimary,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 1.0,
                               ),
                             ),
                             Text(
-                              'Files will be encrypted with AES-256 before network transmission.',
+                              'Files are encrypted before they leave this device.',
                               style: TextStyle(
                                 color: AirCryptColors.textSecondary,
                                 fontSize: 11,
@@ -296,8 +278,8 @@ class _FileSelectionScreenState extends State<FileSelectionScreen> {
                       },
                 icon: Icons.arrow_forward,
                 label: _selectedFiles.isEmpty
-                    ? 'SELECT FILES FIRST'
-                    : 'NEXT: CHOOSE RECIPIENTS (${_selectedFiles.length})',
+                    ? '[ ADD FILES TO CONTINUE ]'
+                    : '[ CHOOSE RECIPIENTS // ${_selectedFiles.length} ]',
               ),
             ],
           ),

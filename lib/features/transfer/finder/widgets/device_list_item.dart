@@ -26,13 +26,13 @@ class DeviceListItem extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: isOnline
-            ? AirCryptColors.accentCyan.withOpacity(0.12)
-            : AirCryptColors.textMuted.withOpacity(0.1),
+            ? AirCryptColors.accentCyan.withValues(alpha: 0.12)
+            : AirCryptColors.textMuted.withValues(alpha: 0.1),
         shape: BoxShape.circle,
         border: Border.all(
           color: isOnline
-              ? AirCryptColors.accentCyan.withOpacity(0.5)
-              : AirCryptColors.textMuted.withOpacity(0.3),
+              ? AirCryptColors.accentCyan.withValues(alpha: 0.5)
+              : AirCryptColors.textMuted.withValues(alpha: 0.3),
           width: 1.2,
         ),
       ),
@@ -48,7 +48,9 @@ class DeviceListItem extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
         borderColor: isSelected
             ? AirCryptColors.accentCyan
-            : (isOnline ? AirCryptColors.accentCyan.withOpacity(0.2) : AirCryptColors.cardBorder),
+            : (isOnline
+                  ? AirCryptColors.accentCyan.withValues(alpha: 0.2)
+                  : AirCryptColors.cardBorder),
         showGlow: isSelected,
         child: CheckboxListTile(
           enabled: isOnline,
@@ -61,8 +63,8 @@ class DeviceListItem extends StatelessWidget {
             device.name,
             style: const TextStyle(
               color: AirCryptColors.textPrimary,
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
             ),
           ),
           subtitle: Row(
@@ -72,14 +74,18 @@ class DeviceListItem extends StatelessWidget {
                 height: 6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isOnline ? AirCryptColors.accentGreen : AirCryptColors.textMuted,
+                  color: isOnline
+                      ? AirCryptColors.accentGreen
+                      : AirCryptColors.textMuted,
                 ),
               ),
               const SizedBox(width: 6),
               Text(
-                isOnline ? 'Online (${device.ipAddress})' : 'Offline',
+                isOnline ? 'Online · ${device.ipAddress}' : 'Offline',
                 style: TextStyle(
-                  color: isOnline ? AirCryptColors.accentGreen : AirCryptColors.textMuted,
+                  color: isOnline
+                      ? AirCryptColors.accentGreen
+                      : AirCryptColors.textMuted,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
@@ -92,7 +98,9 @@ class DeviceListItem extends StatelessWidget {
 
     return CyberCard(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-      borderColor: isOnline ? AirCryptColors.accentCyan.withOpacity(0.25) : AirCryptColors.cardBorder,
+      borderColor: isOnline
+          ? AirCryptColors.accentCyan.withValues(alpha: 0.25)
+          : AirCryptColors.cardBorder,
       onTap: isOnline ? onTap : null,
       child: Row(
         children: [
@@ -106,8 +114,8 @@ class DeviceListItem extends StatelessWidget {
                   device.name,
                   style: const TextStyle(
                     color: AirCryptColors.textPrimary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -115,7 +123,9 @@ class DeviceListItem extends StatelessWidget {
                   children: [
                     CyberBadge(
                       label: isOnline ? 'ONLINE' : 'OFFLINE',
-                      color: isOnline ? AirCryptColors.accentGreen : AirCryptColors.textMuted,
+                      color: isOnline
+                          ? AirCryptColors.accentGreen
+                          : AirCryptColors.textMuted,
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -131,10 +141,7 @@ class DeviceListItem extends StatelessWidget {
             ),
           ),
           if (isOnline)
-            const Icon(
-              Icons.chevron_right,
-              color: AirCryptColors.accentCyan,
-            ),
+            const Icon(Icons.chevron_right, color: AirCryptColors.accentCyan),
         ],
       ),
     );

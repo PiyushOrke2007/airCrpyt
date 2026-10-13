@@ -12,6 +12,8 @@
 .swiftpm/
 migrate_working_dir/
 plan.md
+.vscode
+.gitignore
 
 # IntelliJ related
 *.iml

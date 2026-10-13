@@ -28,17 +28,17 @@ class TransferProgressScreen extends StatelessWidget {
   String _getStatusText(TransferSession session) {
     switch (session.status) {
       case TransferSessionStatus.waiting:
-        return 'WAITING...';
+        return 'Waiting';
       case TransferSessionStatus.connecting:
-        return 'CONNECTING...';
+        return 'Connecting';
       case TransferSessionStatus.sending:
-        return 'TRANSFERRING ${session.progressPercent.toStringAsFixed(0)}%';
+        return 'Sending ${session.progressPercent.toStringAsFixed(0)}%';
       case TransferSessionStatus.completed:
-        return 'VERIFIED & COMPLETE';
+        return 'Verified';
       case TransferSessionStatus.failed:
-        return 'FAILED';
+        return 'Failed';
       case TransferSessionStatus.rejected:
-        return 'REJECTED BY PEER';
+        return 'Declined';
     }
   }
 
@@ -54,9 +54,19 @@ class TransferProgressScreen extends StatelessWidget {
   List<SecurityStepItem> _getSecuritySteps(List<TransferSession> sessions) {
     if (sessions.isEmpty) return [];
 
-    final hasCompleted = sessions.any((s) => s.status == TransferSessionStatus.completed);
-    final hasActive = sessions.any((s) => s.status == TransferSessionStatus.sending || s.status == TransferSessionStatus.connecting);
-    final hasFailed = sessions.any((s) => s.status == TransferSessionStatus.failed || s.status == TransferSessionStatus.rejected);
+    final hasCompleted = sessions.any(
+      (s) => s.status == TransferSessionStatus.completed,
+    );
+    final hasActive = sessions.any(
+      (s) =>
+          s.status == TransferSessionStatus.sending ||
+          s.status == TransferSessionStatus.connecting,
+    );
+    final hasFailed = sessions.any(
+      (s) =>
+          s.status == TransferSessionStatus.failed ||
+          s.status == TransferSessionStatus.rejected,
+    );
 
     return [
       SecurityStepItem(
@@ -73,14 +83,18 @@ class TransferProgressScreen extends StatelessWidget {
         label: 'AES-256-GCM Encryption Active',
         state: hasCompleted
             ? SecurityStepState.completed
-            : (hasActive ? SecurityStepState.active : SecurityStepState.pending),
+            : (hasActive
+                  ? SecurityStepState.active
+                  : SecurityStepState.pending),
         subtext: 'Chunked Cipher Stream',
       ),
       SecurityStepItem(
         label: 'SHA-256 Integrity Verification',
         state: hasCompleted
             ? SecurityStepState.completed
-            : (hasFailed ? SecurityStepState.failed : SecurityStepState.pending),
+            : (hasFailed
+                  ? SecurityStepState.failed
+                  : SecurityStepState.pending),
         subtext: hasCompleted ? 'Hash Match 100%' : null,
       ),
     ];
@@ -90,7 +104,7 @@ class TransferProgressScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SECURE TRANSFER PIPELINE'),
+        title: const Text('AIRCRYPT // TRANSFER'),
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
@@ -101,11 +115,11 @@ class TransferProgressScreen extends StatelessWidget {
             final sessions = snapshot.data ?? [];
 
             if (sessions.isEmpty) {
-              return const Center(
-                child: Text(
-                  'No active transfer session initialized.',
-                  style: TextStyle(color: AirCryptColors.textMuted),
-                ),
+              return const EmptyStateView(
+                icon: Icons.sync_alt_rounded,
+                title: 'NO ACTIVE TRANSFER',
+                message:
+                    'Transfer progress appears here once a session starts.',
               );
             }
 
@@ -130,13 +144,20 @@ class TransferProgressScreen extends StatelessWidget {
               }
               overallProgress = (sumProgress / sessions.length).clamp(0.0, 1.0);
             }
-            final transferredBytes = (overallTotalBytes * overallProgress).round();
+            final transferredBytes = (overallTotalBytes * overallProgress)
+                .round();
 
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const PageIntro(
+                    title: 'TRANSFER STATUS',
+                    subtitle:
+                        'Encrypted files are moving directly between peers.',
+                    icon: Icons.shield_outlined,
+                  ),
                   // Circular Progress Center Card
                   CyberCard(
                     showGlow: true,
@@ -155,7 +176,9 @@ class TransferProgressScreen extends StatelessWidget {
                                 backgroundColor: AirCryptColors.cardBorder,
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                   allFinished
-                                      ? (allSuccessful ? AirCryptColors.accentGreen : AirCryptColors.accentRed)
+                                      ? (allSuccessful
+                                            ? AirCryptColors.accentGreen
+                                            : AirCryptColors.accentRed)
                                       : AirCryptColors.accentCyan,
                                 ),
                               ),
@@ -169,15 +192,19 @@ class TransferProgressScreen extends StatelessWidget {
                                     fontSize: 32,
                                     fontWeight: FontWeight.w900,
                                     color: allFinished
-                                        ? (allSuccessful ? AirCryptColors.accentGreen : AirCryptColors.accentRed)
+                                        ? (allSuccessful
+                                              ? AirCryptColors.accentGreen
+                                              : AirCryptColors.accentRed)
                                         : AirCryptColors.textPrimary,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   allFinished
-                                      ? (allSuccessful ? 'COMPLETE' : 'FINISHED WITH ERRORS')
-                                      : 'TRANSFERRING',
+                                      ? (allSuccessful
+                                            ? 'COMPLETE'
+                                            : 'FINISHED WITH ERRORS')
+                                      : 'SENDING',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
@@ -196,7 +223,7 @@ class TransferProgressScreen extends StatelessWidget {
                             color: AirCryptColors.accentCyan,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
+                            letterSpacing: 0.2,
                           ),
                         ),
                       ],
@@ -206,20 +233,18 @@ class TransferProgressScreen extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // Cryptographic Pipeline Checklist
-                  SecurityPipelineWidget(
-                    steps: _getSecuritySteps(sessions),
-                  ),
+                  SecurityPipelineWidget(steps: _getSecuritySteps(sessions)),
 
                   const SizedBox(height: 20),
 
                   // Individual Recipients Cards List
                   Text(
-                    'RECIPIENT NODES (${sessions.length})',
+                    'Receiving devices (${sessions.length})',
                     style: const TextStyle(
                       color: AirCryptColors.textSecondary,
-                      fontSize: 11,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 1.5,
+                      letterSpacing: 0,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -234,7 +259,7 @@ class TransferProgressScreen extends StatelessWidget {
 
                       return CyberCard(
                         margin: const EdgeInsets.only(bottom: 10),
-                        borderColor: statusColor.withOpacity(0.3),
+                        borderColor: statusColor.withValues(alpha: 0.3),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -243,7 +268,11 @@ class TransferProgressScreen extends StatelessWidget {
                               children: [
                                 Row(
                                   children: [
-                                    const Icon(Icons.laptop_mac_outlined, size: 18, color: AirCryptColors.accentCyan),
+                                    const Icon(
+                                      Icons.laptop_mac_outlined,
+                                      size: 18,
+                                      color: AirCryptColors.accentCyan,
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
                                       session.deviceName,
@@ -276,7 +305,11 @@ class TransferProgressScreen extends StatelessWidget {
                               const SizedBox(height: 10),
                               Row(
                                 children: [
-                                  const Icon(Icons.error_outline, size: 14, color: AirCryptColors.accentRed),
+                                  const Icon(
+                                    Icons.error_outline,
+                                    size: 14,
+                                    color: AirCryptColors.accentRed,
+                                  ),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
@@ -303,8 +336,10 @@ class TransferProgressScreen extends StatelessWidget {
                     onPressed: () {
                       Navigator.of(context).popUntil((route) => route.isFirst);
                     },
-                    icon: allFinished ? Icons.check_circle_outline : Icons.home_outlined,
-                    label: allFinished ? 'DONE (RETURN TO TERMINAL)' : 'RETURN TO HOME TERMINAL',
+                    icon: allFinished
+                        ? Icons.check_circle_outline
+                        : Icons.home_outlined,
+                    label: allFinished ? 'Done' : 'Back to home',
                   ),
                 ],
               ),

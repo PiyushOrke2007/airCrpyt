@@ -69,8 +69,10 @@ class _DeviceScreenState extends State<DeviceScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Incoming Connection'),
-        content: Text('"$senderName" is attempting to establish a peer connection.'),
+        title: const Text('[ INCOMING CONNECTION ]'),
+        content: Text(
+          '"$senderName" is attempting to establish a peer connection.',
+        ),
         actions: [
           CyberButton(
             label: 'DECLINE',
@@ -247,14 +249,15 @@ class _DeviceScreenState extends State<DeviceScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          fileCount > 0 ? 'SELECT RECIPIENTS' : 'NEARBY AIRCRYPT DEVICES',
-          style: const TextStyle(letterSpacing: 1.2),
+          fileCount > 0 ? 'AIRCRYPT // RECIPIENTS' : 'AIRCRYPT // RECEIVE',
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_outlined),
             tooltip: 'Rescan Network',
-            onPressed: _isInitializing ? null : () => _handler.reloadDiscovery(),
+            onPressed: _isInitializing
+                ? null
+                : () => _handler.reloadDiscovery(),
           ),
         ],
       ),
@@ -262,6 +265,18 @@ class _DeviceScreenState extends State<DeviceScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+              child: PageIntro(
+                title: fileCount > 0
+                    ? 'SELECT RECIPIENT'
+                    : 'BEACON SCAN / RECEIVE FILES',
+                subtitle: fileCount > 0
+                    ? 'Choose an online peer on your local network.'
+                    : 'Incoming peer connections will appear on this local network.',
+                icon: Icons.devices_other_outlined,
+              ),
+            ),
             if (_currentStatus != null)
               DiscoveryStatusBar(
                 status: _currentStatus!,
@@ -269,9 +284,15 @@ class _DeviceScreenState extends State<DeviceScreen> {
               ),
             if (_onlineDevices.isNotEmpty && fileCount > 0)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
                 child: CyberCard(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   child: CheckboxListTile(
                     tristate: true,
                     value: _selectAllValue,
@@ -279,16 +300,16 @@ class _DeviceScreenState extends State<DeviceScreen> {
                     activeColor: AirCryptColors.accentCyan,
                     checkColor: AirCryptColors.bgDark,
                     title: const Text(
-                      'SELECT ALL DEVICES',
+                      '[ SELECT ALL DEVICES ]',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                         color: AirCryptColors.accentCyan,
-                        letterSpacing: 1.0,
+                        letterSpacing: 0,
                       ),
                     ),
                     subtitle: Text(
-                      '$selectedDeviceCount of ${_onlineDevices.length} devices targeted',
+                      '$selectedDeviceCount / ${_onlineDevices.length} TARGETED',
                       style: const TextStyle(
                         color: AirCryptColors.textSecondary,
                         fontSize: 12,
@@ -300,7 +321,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
             Expanded(child: _buildBody()),
             if (fileCount > 0)
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                 child: CyberButton(
                   onPressed: selectedDeviceCount == 0 || _isSending
                       ? null
@@ -308,8 +329,8 @@ class _DeviceScreenState extends State<DeviceScreen> {
                   isLoading: _isSending,
                   icon: Icons.shield_outlined,
                   label: _isSending
-                      ? 'INITIATING ENCRYPTED TRANSFER...'
-                      : 'SECURE SEND ($fileCount FILE${fileCount == 1 ? '' : 'S'})',
+                      ? 'Starting secure transfer…'
+                      : '[ BROADCAST PAYLOAD // $fileCount FILE${fileCount == 1 ? '' : 'S'} ]',
                 ),
               ),
           ],
@@ -324,8 +345,9 @@ class _DeviceScreenState extends State<DeviceScreen> {
     if (_isInitializing) {
       return const Center(
         child: RadarScanWidget(
-          statusText: 'INITIALIZING NETWORK DISCOVERY...',
-          helpText: 'Broadcasting UDP discovery beacons on local subnet.',
+          statusText: 'Looking for nearby devices…',
+          helpText:
+              'Make sure both devices are connected to the same Wi-Fi network.',
         ),
       );
     }
@@ -338,12 +360,12 @@ class _DeviceScreenState extends State<DeviceScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const RadarScanWidget(
-                statusText: 'NO AIRCRYPT DEVICES FOUND',
-                helpText: 'Ensure both devices are connected to the same Wi-Fi network with AirCrypt active.',
+                statusText: 'No devices found yet',
+                helpText: 'Connect both devices to the same Wi-Fi network, then scan again.',
               ),
               const SizedBox(height: 24),
               CyberButton(
-                label: 'RESCAN LOCAL NETWORK',
+                label: 'Scan again',
                 icon: Icons.radar_outlined,
                 isPrimary: false,
                 onPressed: () => _handler.reloadDiscovery(),

@@ -30,203 +30,137 @@ class AircryptApp extends StatelessWidget {
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  void _open(BuildContext context, Widget screen) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AIRCRYPT TERMINAL'),
+        title: const Text('AIRCRYPT'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Settings',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
-            },
+            onPressed: () => _open(context, const SettingsScreen()),
           ),
         ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 10),
-              
-              // Central Visual Identity Branding
-              const AirCryptHeader(),
-
-              const SizedBox(height: 28),
-
-              // P2P Status Badge
-              Center(
-                child: CyberBadge(
-                  label: 'DISCOVERY ENGINE ACTIVE • P2P READY',
-                  icon: Icons.cell_tower_outlined,
-                  color: AirCryptColors.accentGreen,
-                  isFilled: true,
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              // Primary Actions
-              CyberCard(
-                showGlow: true,
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    CyberButton(
-                      label: 'SECURE SEND FILES',
-                      icon: Icons.upload_file_outlined,
-                      width: double.infinity,
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const FileSelectionScreen(),
-                          ),
-                        );
-                      },
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'FILE_LINK_v1.0',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.8,
                     ),
-                    const SizedBox(height: 12),
-                    CyberButton(
-                      label: 'RECEIVE / NEARBY DEVICES',
-                      icon: Icons.radar_outlined,
-                      isPrimary: false,
-                      width: double.infinity,
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const DeviceScreen()),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                  ),
+                  CyberBadge(
+                    label: 'LOCAL NODE',
+                    icon: Icons.circle,
+                    color: AirCryptColors.textPrimary,
+                  ),
+                ],
               ),
-
-              const SizedBox(height: 24),
-
-              // Navigation Quick Actions
-              Text(
-                'SYSTEM REPOSITORY',
-                style: TextStyle(
-                  color: AirCryptColors.textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const SizedBox(height: 10),
-
+              const SizedBox(height: 16),
               CyberCard(
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
-                    ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AirCryptColors.accentCyan.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.folder_special_outlined, size: 20),
-                      ),
-                      title: const Text('Received Vault', style: TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: const Text('View and manage received encrypted files', style: TextStyle(fontSize: 12, color: AirCryptColors.textSecondary)),
-                      trailing: const Icon(Icons.chevron_right, color: AirCryptColors.accentCyan),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ReceivedFilesScreen(),
-                          ),
-                        );
-                      },
+                    _HomeAction(
+                      eyebrow: 'BROADCAST',
+                      title: 'SEND FILES',
+                      icon: Icons.upload_outlined,
+                      onTap: () => _open(context, const FileSelectionScreen()),
                     ),
                     const Divider(height: 1),
-                    ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AirCryptColors.accentBlue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.history_toggle_off_outlined, size: 20, color: AirCryptColors.accentBlue),
-                      ),
-                      title: const Text('Transfer Audit Log', style: TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: const Text('History of sent and received transfers', style: TextStyle(fontSize: 12, color: AirCryptColors.textSecondary)),
-                      trailing: const Icon(Icons.chevron_right, color: AirCryptColors.accentCyan),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const TransferHistoryScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AirCryptColors.accentRed.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.delete_sweep_outlined, size: 20, color: AirCryptColors.accentRed),
-                      ),
-                      title: const Text('Secure Trash', style: TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: const Text('Recover or permanently purge deleted items', style: TextStyle(fontSize: 12, color: AirCryptColors.textSecondary)),
-                      trailing: const Icon(Icons.chevron_right, color: AirCryptColors.accentCyan),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const TrashScreen()),
-                        );
-                      },
+                    _HomeAction(
+                      eyebrow: 'BEACON SCAN',
+                      title: 'RECEIVE FILES',
+                      icon: Icons.download_outlined,
+                      onTap: () => _open(context, const DeviceScreen()),
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 24),
-
-              // Security Standard Specs Banner
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '[ SHORTCUTS ]',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  Text(
+                    'STORAGE & LOGS',
+                    style: TextStyle(
+                      color: AirCryptColors.textMuted,
+                      fontSize: 9,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
               CyberCard(
-                borderColor: AirCryptColors.accentCyan.withOpacity(0.15),
-                backgroundColor: AirCryptColors.bgSurface.withOpacity(0.6),
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    _HomeShortcut(
+                      icon: Icons.folder_outlined,
+                      title: 'RECEIVED FILES',
+                      subtitle: 'Open your local vault',
+                      onTap: () => _open(context, const ReceivedFilesScreen()),
+                    ),
+                    const Divider(height: 1),
+                    _HomeShortcut(
+                      icon: Icons.history,
+                      title: 'TRANSFER HISTORY',
+                      subtitle: 'View session log',
+                      onTap: () =>
+                          _open(context, const TransferHistoryScreen()),
+                    ),
+                    const Divider(height: 1),
+                    _HomeShortcut(
+                      icon: Icons.delete_outline,
+                      title: 'TRASH',
+                      subtitle: 'Recently deleted items',
+                      onTap: () => _open(context, const TrashScreen()),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              CyberCard(
+                padding: const EdgeInsets.all(12),
                 child: Row(
                   children: [
-                    const Icon(Icons.lock_clock_outlined, size: 22, color: AirCryptColors.accentCyan),
-                    const SizedBox(width: 12),
+                    const Icon(
+                      Icons.lock_outline,
+                      size: 18,
+                      color: AirCryptColors.accentCyan,
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'CRYPTOGRAPHIC SPECIFICATION',
-                            style: TextStyle(
-                              color: AirCryptColors.accentCyan,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            'AES-256-GCM • RSA-2048 • SHA-256 INTEGRITY',
-                            style: TextStyle(
-                              color: AirCryptColors.textSecondary,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
+                      child: const Text(
+                        'LOCAL PEER-TO-PEER  /  ENCRYPTED TRANSFER',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -235,6 +169,98 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HomeAction extends StatelessWidget {
+  final String eyebrow;
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _HomeAction({
+    required this.eyebrow,
+    required this.title,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PressInvert(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(icon, size: 22),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    eyebrow,
+                    style: const TextStyle(
+                      color: AirCryptColors.textMuted,
+                      fontSize: 9,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Text('→', style: TextStyle(fontSize: 20)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeShortcut extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _HomeShortcut({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PressInvert(
+      onTap: onTap,
+      child: ListTile(
+        leading: Icon(icon, size: 19, color: AirCryptColors.textPrimary),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(
+            fontSize: 10,
+            color: AirCryptColors.textSecondary,
+          ),
+        ),
+        trailing: const Text('→', style: TextStyle(fontSize: 18)),
+        dense: true,
       ),
     );
   }

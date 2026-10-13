@@ -1,5 +1,7 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
 import '../theme/aircrypt_theme.dart';
 
 class RadarScanWidget extends StatefulWidget {
@@ -11,8 +13,9 @@ class RadarScanWidget extends StatefulWidget {
   const RadarScanWidget({
     super.key,
     this.size = 200,
-    this.statusText = 'SCANNING FOR NEARBY AIRCRYPT PEERS...',
-    this.helpText = 'Ensure both devices are connected to the same Wi-Fi network.',
+    this.statusText = 'Looking for nearby devices…',
+    this.helpText =
+        'Ensure both devices are connected to the same Wi-Fi network.',
     this.isScanning = true,
   });
 
@@ -75,15 +78,19 @@ class _RadarScanWidgetState extends State<RadarScanWidget>
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AirCryptColors.accentCyan.withOpacity(0.12),
+                      color: AirCryptColors.accentCyan.withValues(alpha: 0.12),
                       border: Border.all(
                         color: AirCryptColors.accentCyan,
                         width: 1.5,
                       ),
-                      boxShadow: AirCryptColors.cyberGlow(
-                        color: AirCryptColors.accentCyan,
-                        opacity: 0.3,
-                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AirCryptColors.accentCyan.withValues(
+                            alpha: 0.16,
+                          ),
+                          blurRadius: 20,
+                        ),
+                      ],
                     ),
                     child: const Icon(
                       Icons.wifi_tethering_outlined,
@@ -98,13 +105,13 @@ class _RadarScanWidgetState extends State<RadarScanWidget>
         ),
         const SizedBox(height: 24),
         Text(
-          widget.statusText.toUpperCase(),
+          widget.statusText,
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: AirCryptColors.accentCyan,
             fontSize: 13,
             fontWeight: FontWeight.bold,
-            letterSpacing: 1.5,
+            letterSpacing: 0.2,
           ),
         ),
         const SizedBox(height: 8),
@@ -115,7 +122,8 @@ class _RadarScanWidgetState extends State<RadarScanWidget>
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: AirCryptColors.textSecondary,
-              fontSize: 12,
+              fontSize: 13,
+              height: 1.5,
             ),
           ),
         ),
@@ -137,7 +145,7 @@ class _RadarPainter extends CustomPainter {
 
     // Outer grid rings
     final ringPaint = Paint()
-      ..color = AirCryptColors.accentCyan.withOpacity(0.15)
+      ..color = AirCryptColors.accentCyan.withValues(alpha: 0.15)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
@@ -147,7 +155,7 @@ class _RadarPainter extends CustomPainter {
 
     // Crosshairs
     final linePaint = Paint()
-      ..color = AirCryptColors.accentCyan.withOpacity(0.12)
+      ..color = AirCryptColors.accentCyan.withValues(alpha: 0.12)
       ..strokeWidth = 1.0;
 
     canvas.drawLine(
@@ -167,8 +175,8 @@ class _RadarPainter extends CustomPainter {
       startAngle: 0.0,
       endAngle: math.pi / 2,
       colors: [
-        AirCryptColors.accentCyan.withOpacity(0.0),
-        AirCryptColors.accentCyan.withOpacity(0.35),
+        AirCryptColors.accentCyan.withValues(alpha: 0.0),
+        AirCryptColors.accentCyan.withValues(alpha: 0.35),
       ],
       transform: GradientRotation(angle),
     );

@@ -4,6 +4,7 @@ import '../../core/services/device_identity_service.dart';
 import '../../core/services/settings_service.dart';
 import '../../core/theme/aircrypt_theme.dart';
 import '../../core/widgets/cyber_widgets.dart';
+import '../trash/trash_screen.dart';
 import '../transfer/tcp_receiver_screen.dart';
 import '../transfer/tcp_sender_screen.dart';
 
@@ -43,9 +44,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Device name cannot be empty.'),
-        ),
+        const SnackBar(content: Text('Device name cannot be empty.')),
       );
       return;
     }
@@ -54,9 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Device identity updated successfully.'),
-        ),
+        const SnackBar(content: Text('Device identity updated successfully.')),
       );
     }
   }
@@ -78,35 +75,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('NODE CONFIGURATION'),
-      ),
+      appBar: AppBar(title: const Text('AIRCRYPT // SETTINGS')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '[ 01 // PREFERENCES ]',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'MOD.CONF',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: AirCryptColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
               CyberCard(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'DEVICE NODE IDENTITY',
+                      'DEVICE IDENTITY',
                       style: TextStyle(
                         color: AirCryptColors.accentCyan,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'This device identifier will be broadcast to nearby AirCrypt peers on local Wi-Fi subnet.',
+                      'Name broadcast to nearby AirCrypt peers on your local network.',
                       style: TextStyle(
                         color: AirCryptColors.textSecondary,
-                        fontSize: 12,
+                        fontSize: 10,
+                        height: 1.4,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -114,13 +126,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       controller: _deviceNameController,
                       style: const TextStyle(color: AirCryptColors.textPrimary),
                       decoration: const InputDecoration(
-                        labelText: 'Broadcasting Device Name',
-                        prefixIcon: Icon(Icons.badge_outlined, color: AirCryptColors.accentCyan),
+                        labelText: 'Broadcast device name',
+                        prefixIcon: Icon(
+                          Icons.badge_outlined,
+                          color: AirCryptColors.accentCyan,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     CyberButton(
-                      label: 'SAVE IDENTIFIER',
+                      label: '[ SAVE IDENTIFIER ]',
                       icon: Icons.save_outlined,
                       width: double.infinity,
                       onPressed: _saveDeviceName,
@@ -131,14 +146,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               const SizedBox(height: 20),
 
-              Text(
-                'DIAGNOSTICS & DEBUG',
-                style: TextStyle(
-                  color: AirCryptColors.textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '[ 02 // STORAGE ]',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'ISOLATED',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: AirCryptColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              CyberCard(
+                padding: EdgeInsets.zero,
+                child: PressInvert(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TrashScreen()),
+                  ),
+                  child: const ListTile(
+                    leading: Icon(Icons.delete_outline),
+                    title: Text(
+                      '[ TRASH BIN ]',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Restore or permanently delete isolated items',
+                      style: TextStyle(fontSize: 9),
+                    ),
+                    trailing: Text('→', style: TextStyle(fontSize: 18)),
+                  ),
                 ),
+              ),
+              const SizedBox(height: 22),
+              const Text(
+                '[ 03 // DIAGNOSTICS ]',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
 
@@ -146,46 +198,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
-                    ListTile(
-                      leading: const Icon(Icons.fingerprint, color: AirCryptColors.accentCyan),
-                      title: const Text('Show Cryptographic Device ID'),
-                      trailing: const Icon(Icons.chevron_right, color: AirCryptColors.accentCyan),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const DeviceIdDebugScreen(),
-                          ),
-                        );
-                      },
+                    PressInvert(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DeviceIdDebugScreen(),
+                        ),
+                      ),
+                      child: const ListTile(
+                        leading: Icon(Icons.fingerprint),
+                        title: Text('Show Cryptographic Device ID'),
+                        trailing: Icon(Icons.chevron_right),
+                      ),
                     ),
                     const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.input, color: AirCryptColors.accentCyan),
-                      title: const Text('TCP Receiver Protocol Test'),
-                      trailing: const Icon(Icons.chevron_right, color: AirCryptColors.accentCyan),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const TcpReceiverScreen(),
-                          ),
-                        );
-                      },
+                    PressInvert(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const TcpReceiverScreen(),
+                        ),
+                      ),
+                      child: const ListTile(
+                        leading: Icon(Icons.input),
+                        title: Text('TCP Receiver Protocol Test'),
+                        trailing: Icon(Icons.chevron_right),
+                      ),
                     ),
                     const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.output, color: AirCryptColors.accentCyan),
-                      title: const Text('TCP Sender Protocol Test'),
-                      trailing: const Icon(Icons.chevron_right, color: AirCryptColors.accentCyan),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const TcpSenderScreen(),
-                          ),
-                        );
-                      },
+                    PressInvert(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const TcpSenderScreen(),
+                        ),
+                      ),
+                      child: const ListTile(
+                        leading: Icon(Icons.output),
+                        title: Text('TCP Sender Protocol Test'),
+                        trailing: Icon(Icons.chevron_right),
+                      ),
                     ),
                   ],
                 ),
@@ -229,9 +281,7 @@ class _DeviceIdDebugScreenState extends State<DeviceIdDebugScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('DEVICE IDENTITY GUID'),
-      ),
+      appBar: AppBar(title: const Text('AIRCRYPT // IDENTITY')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -242,12 +292,11 @@ class _DeviceIdDebugScreenState extends State<DeviceIdDebugScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'UNIQUE CRYPTOGRAPHIC NODE ID',
+                  'Cryptographic device ID',
                   style: TextStyle(
                     color: AirCryptColors.accentCyan,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -255,7 +304,7 @@ class _DeviceIdDebugScreenState extends State<DeviceIdDebugScreen> {
                   _deviceId,
                   style: const TextStyle(
                     color: AirCryptColors.textPrimary,
-                    fontFamily: 'monospace',
+                    fontFamily: 'Silkscreen',
                     fontSize: 14,
                   ),
                 ),

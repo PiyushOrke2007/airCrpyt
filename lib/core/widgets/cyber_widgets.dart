@@ -2,7 +2,95 @@ import 'package:flutter/material.dart';
 
 import '../theme/aircrypt_theme.dart';
 
-/// Dark elevated panel card with thin futuristic glowing borders.
+const _identityColorMatrix = <double>[
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+];
+
+const _invertColorMatrix = <double>[
+  -1,
+  0,
+  0,
+  0,
+  255,
+  0,
+  -1,
+  0,
+  0,
+  255,
+  0,
+  0,
+  -1,
+  0,
+  255,
+  0,
+  0,
+  0,
+  1,
+  0,
+];
+
+class PressInvert extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+  final Color backgroundColor;
+
+  const PressInvert({
+    super.key,
+    required this.child,
+    required this.onTap,
+    this.backgroundColor = AirCryptColors.bgSurface,
+  });
+
+  @override
+  State<PressInvert> createState() => _PressInvertState();
+}
+
+class _PressInvertState extends State<PressInvert> {
+  bool _isPressed = false;
+
+  void _setPressed(bool pressed) {
+    if (_isPressed == pressed) return;
+    setState(() => _isPressed = pressed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: widget.onTap,
+      onTapDown: (_) => _setPressed(true),
+      onTapUp: (_) => _setPressed(false),
+      onTapCancel: () => _setPressed(false),
+      overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+      child: ColorFiltered(
+        colorFilter: ColorFilter.matrix(
+          _isPressed ? _invertColorMatrix : _identityColorMatrix,
+        ),
+        child: ColoredBox(color: widget.backgroundColor, child: widget.child),
+      ),
+    );
+  }
+}
+
+/// Monochrome, hard-edged panel used by the terminal screens.
 class CyberCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -25,30 +113,136 @@ class CyberCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderClr = borderColor ?? AirCryptColors.accentCyan.withOpacity(0.2);
+    final borderClr = borderColor ?? AirCryptColors.cardBorder;
     final bgClr = backgroundColor ?? AirCryptColors.cardBg;
+    final cardTap = onTap;
 
-    Widget cardContent = Container(
-      margin: margin,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: bgClr,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderClr, width: 1.2),
-        boxShadow: showGlow ? AirCryptColors.cyberGlow(color: borderClr, opacity: 0.18) : null,
-      ),
-      child: child,
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.zero,
+      side: BorderSide(color: borderClr, width: 1.2),
     );
 
-    if (onTap != null) {
-      return InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: cardContent,
-      );
-    }
+    return Container(
+      margin: margin,
+      child: Material(
+        color: bgClr,
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        child: cardTap == null
+            ? Padding(padding: padding, child: child)
+            : PressInvert(
+                onTap: cardTap,
+                backgroundColor: bgClr,
+                child: Padding(padding: padding, child: child),
+              ),
+      ),
+    );
+  }
+}
 
-    return cardContent;
+class PageIntro extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+
+  const PageIntro({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '[ ${title.toUpperCase()} ]',
+                  style: const TextStyle(
+                    color: AirCryptColors.textPrimary,
+                    fontFamily: 'Silkscreen',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AirCryptColors.textSecondary,
+                    fontFamily: 'Silkscreen',
+                    fontSize: 11,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Icon(icon, size: 16, color: AirCryptColors.textPrimary),
+        ],
+      ),
+    );
+  }
+}
+
+class EmptyStateView extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+
+  const EmptyStateView({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 34, color: AirCryptColors.textPrimary),
+            const SizedBox(height: 14),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AirCryptColors.textPrimary,
+                fontFamily: 'Silkscreen',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AirCryptColors.textSecondary,
+                fontFamily: 'Silkscreen',
+                fontSize: 11,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -70,11 +264,11 @@ class CyberBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isFilled ? color.withOpacity(0.18) : color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.4), width: 1),
+        color: isFilled ? color : AirCryptColors.bgSurface,
+        borderRadius: BorderRadius.zero,
+        border: Border.all(color: color, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -84,12 +278,13 @@ class CyberBadge extends StatelessWidget {
             const SizedBox(width: 4),
           ],
           Text(
-            label.toUpperCase(),
+            label,
             style: TextStyle(
-              color: color,
+              color: isFilled ? AirCryptColors.bgSurface : color,
+              fontFamily: 'Silkscreen',
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
+              letterSpacing: 0.5,
             ),
           ),
         ],
@@ -121,7 +316,9 @@ class CyberButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color activeColor = isDanger ? AirCryptColors.accentRed : AirCryptColors.accentCyan;
+    final Color activeColor = isDanger
+        ? AirCryptColors.accentRed
+        : AirCryptColors.accentCyan;
 
     Widget buttonChild;
     if (isLoading) {
@@ -131,7 +328,7 @@ class CyberButton extends StatelessWidget {
         child: CircularProgressIndicator(
           strokeWidth: 2.2,
           valueColor: AlwaysStoppedAnimation<Color>(
-            isPrimary ? AirCryptColors.bgDark : activeColor,
+            isPrimary ? AirCryptColors.bgSurface : activeColor,
           ),
         ),
       );
@@ -140,21 +337,13 @@ class CyberButton extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[
-            Icon(
-              icon,
-              size: 18,
-              color: isPrimary ? AirCryptColors.bgDark : activeColor,
-            ),
-            const SizedBox(width: 8),
-          ],
+          if (icon != null) ...[Icon(icon, size: 18), const SizedBox(width: 8)],
           Text(
-            label.toUpperCase(),
-            style: TextStyle(
-              color: isPrimary ? AirCryptColors.bgDark : activeColor,
+            label,
+            style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 14,
-              letterSpacing: 1.2,
+              letterSpacing: 0.1,
             ),
           ),
         ],
@@ -164,42 +353,87 @@ class CyberButton extends StatelessWidget {
     Widget btn;
     if (isPrimary) {
       btn = Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: onPressed != null
-              ? AirCryptColors.cyberGlow(color: activeColor, opacity: 0.3)
-              : null,
-        ),
+        decoration: BoxDecoration(borderRadius: BorderRadius.zero),
         child: ElevatedButton(
           onPressed: isLoading ? null : onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: activeColor,
-            disabledBackgroundColor: activeColor.withOpacity(0.3),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            elevation: 0,
-          ),
+          style:
+              ElevatedButton.styleFrom(
+                backgroundColor: activeColor,
+                disabledBackgroundColor: activeColor.withValues(alpha: 0.3),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                elevation: 4,
+                shadowColor: AirCryptColors.textPrimary.withValues(alpha: 0.28),
+              ).copyWith(
+                backgroundColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.disabled)) {
+                    return activeColor.withValues(alpha: 0.3);
+                  }
+                  if (states.contains(WidgetState.pressed)) {
+                    return AirCryptColors.bgSurface;
+                  }
+                  return activeColor;
+                }),
+                foregroundColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.disabled)) {
+                    return AirCryptColors.textMuted;
+                  }
+                  if (states.contains(WidgetState.pressed)) {
+                    return activeColor;
+                  }
+                  return AirCryptColors.bgSurface;
+                }),
+                overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+                elevation: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.disabled) ||
+                      states.contains(WidgetState.pressed)) {
+                    return 0;
+                  }
+                  return 4;
+                }),
+              ),
           child: buttonChild,
         ),
       );
     } else {
       btn = OutlinedButton(
         onPressed: isLoading ? null : onPressed,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: activeColor,
-          side: BorderSide(
-            color: onPressed != null
-                ? activeColor.withOpacity(0.6)
-                : activeColor.withOpacity(0.2),
-            width: 1.5,
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
+        style:
+            OutlinedButton.styleFrom(
+              foregroundColor: activeColor,
+              side: BorderSide(
+                color: onPressed != null
+                    ? AirCryptColors.cardBorder
+                    : AirCryptColors.cardBorder.withValues(alpha: 0.5),
+                width: 1.5,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+              elevation: 3,
+              shadowColor: AirCryptColors.textPrimary.withValues(alpha: 0.24),
+            ).copyWith(
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.pressed)) return activeColor;
+                return Colors.transparent;
+              }),
+              foregroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.pressed)) {
+                  return AirCryptColors.bgSurface;
+                }
+                return activeColor;
+              }),
+              overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+              elevation: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.disabled) ||
+                    states.contains(WidgetState.pressed)) {
+                  return 0;
+                }
+                return 3;
+              }),
+            ),
         child: buttonChild,
       );
     }
@@ -226,10 +460,10 @@ class AirCryptHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: AirCryptColors.accentCyan.withOpacity(0.1),
+              color: AirCryptColors.accentCyan.withValues(alpha: 0.1),
               shape: BoxShape.circle,
               border: Border.all(
-                color: AirCryptColors.accentCyan.withOpacity(0.5),
+                color: AirCryptColors.accentCyan.withValues(alpha: 0.5),
                 width: 1.2,
               ),
             ),
@@ -245,16 +479,16 @@ class AirCryptHeader extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: const [
               Text(
-                'AIRCRYPT',
+                'AirCrypt',
                 style: TextStyle(
                   color: AirCryptColors.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 2.0,
+                  letterSpacing: -0.4,
                 ),
               ),
               Text(
-                'SECURE • PRIVATE • DIRECT',
+                'Secure  •  Private  •  Direct',
                 style: TextStyle(
                   color: AirCryptColors.accentCyan,
                   fontSize: 9,
@@ -275,29 +509,29 @@ class AirCryptHeader extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             Container(
-              width: 90,
-              height: 90,
+              width: 82,
+              height: 82,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AirCryptColors.accentCyan.withOpacity(0.06),
+                color: AirCryptColors.accentCyan.withValues(alpha: 0.06),
                 border: Border.all(
-                  color: AirCryptColors.accentCyan.withOpacity(0.25),
+                  color: AirCryptColors.accentCyan.withValues(alpha: 0.25),
                   width: 1.5,
                 ),
                 boxShadow: AirCryptColors.cyberGlow(
                   color: AirCryptColors.accentCyan,
-                  opacity: 0.2,
+                  opacity: 0.1,
                 ),
               ),
             ),
             Container(
-              width: 70,
-              height: 70,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AirCryptColors.accentCyan.withOpacity(0.12),
+                color: AirCryptColors.accentCyan.withValues(alpha: 0.12),
                 border: Border.all(
-                  color: AirCryptColors.accentCyan.withOpacity(0.5),
+                  color: AirCryptColors.accentCyan.withValues(alpha: 0.5),
                   width: 1.5,
                 ),
               ),
@@ -317,12 +551,12 @@ class AirCryptHeader extends StatelessWidget {
             end: Alignment.bottomRight,
           ).createShader(bounds),
           child: const Text(
-            'AIRCRYPT',
+            'AirCrypt',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 32,
+              fontSize: 38,
               fontWeight: FontWeight.w900,
-              letterSpacing: 4.0,
+              letterSpacing: -1.2,
             ),
           ),
         ),
@@ -330,20 +564,20 @@ class AirCryptHeader extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: AirCryptColors.accentCyan.withOpacity(0.08),
+            color: AirCryptColors.accentCyan.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: AirCryptColors.accentCyan.withOpacity(0.3),
+              color: AirCryptColors.accentCyan.withValues(alpha: 0.3),
               width: 1,
             ),
           ),
           child: const Text(
-            'SECURE  •  PRIVATE  •  DIRECT',
+            'Secure  •  Private  •  Direct',
             style: TextStyle(
               color: AirCryptColors.accentCyan,
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: FontWeight.bold,
-              letterSpacing: 2.0,
+              letterSpacing: 0.8,
             ),
           ),
         ),
@@ -367,7 +601,11 @@ class SecurityPipelineWidget extends StatelessWidget {
         children: [
           Row(
             children: const [
-              Icon(Icons.verified_user_outlined, size: 16, color: AirCryptColors.accentCyan),
+              Icon(
+                Icons.verified_user_outlined,
+                size: 16,
+                color: AirCryptColors.accentCyan,
+              ),
               SizedBox(width: 8),
               Text(
                 'CRYPTOGRAPHIC PIPELINE',
@@ -381,9 +619,7 @@ class SecurityPipelineWidget extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Column(
-            children: steps.map((step) => _buildStepRow(step)).toList(),
-          ),
+          Column(children: steps.map((step) => _buildStepRow(step)).toList()),
         ],
       ),
     );

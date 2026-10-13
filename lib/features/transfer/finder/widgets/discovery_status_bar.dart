@@ -18,12 +18,9 @@ class DiscoveryStatusBar extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: AirCryptColors.accentCyan.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: AirCryptColors.accentCyan.withOpacity(0.4),
-          width: 1,
-        ),
+        color: AirCryptColors.cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AirCryptColors.cardBorder, width: 1),
       ),
       child: Row(
         children: [
@@ -38,9 +35,8 @@ class DiscoveryStatusBar extends StatelessWidget {
               status,
               style: const TextStyle(
                 color: AirCryptColors.accentCyan,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 fontSize: 12,
-                letterSpacing: 0.5,
               ),
             ),
           ),

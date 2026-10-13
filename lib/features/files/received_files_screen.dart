@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/file_storage_service.dart';
 import '../../core/theme/aircrypt_theme.dart';
 import '../../core/widgets/cyber_widgets.dart';
+import '../settings/settings_screen.dart';
 
 class ReceivedFilesScreen extends StatefulWidget {
   const ReceivedFilesScreen({super.key});
@@ -15,9 +16,9 @@ class ReceivedFilesScreen extends StatefulWidget {
 
 class _ReceivedFilesScreenState extends State<ReceivedFilesScreen> {
   final FileStorageService _storageService = FileStorageService();
-
   List<FileSystemEntity> _files = [];
   bool _isLoading = true;
+  String _filter = '';
 
   @override
   void initState() {
@@ -27,122 +28,181 @@ class _ReceivedFilesScreenState extends State<ReceivedFilesScreen> {
 
   Future<void> _loadFiles() async {
     final directory = await _storageService.getReceivedDirectory();
-
-    final entities = await directory
+    final files = await directory
         .list(recursive: true)
-        .where(
-          (entity) => entity is File,
-        )
+        .where((entity) => entity is File)
         .toList();
 
-    if (!mounted) {
-      return;
-    }
-
+    if (!mounted) return;
     setState(() {
-      _files = entities;
+      _files = files;
       _isLoading = false;
     });
   }
 
-  String _fileName(FileSystemEntity entity) {
-    return entity.path.split(Platform.pathSeparator).last;
+  String _fileName(FileSystemEntity entity) =>
+      entity.path.split(Platform.pathSeparator).last;
+
+  String _fileDetails(FileSystemEntity entity) {
+    try {
+      final stat = entity.statSync();
+      final size = _formatSize(stat.size);
+      final date = MaterialLocalizations.of(context)
+          .formatShortDate(stat.modified);
+      return '$size · $date';
+    } on FileSystemException {
+      return entity.path;
+    }
+  }
+
+  String _formatSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
   @override
   Widget build(BuildContext context) {
+    final visibleFiles = _files
+        .where((file) => _fileName(file).toLowerCase().contains(_filter))
+        .toList();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('RECEIVED VAULT'),
+        title: const Text('AIRCRYPT // RECEIVED'),
+        actions: [
+          IconButton(
+            tooltip: 'Settings',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
+            icon: const Icon(Icons.settings_outlined),
+          ),
+        ],
       ),
       body: SafeArea(
         child: _isLoading
             ? const Center(
-                child: CircularProgressIndicator(color: AirCryptColors.accentCyan),
+                child: CircularProgressIndicator(
+                  color: AirCryptColors.accentCyan,
+                ),
               )
             : _files.isEmpty
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+            ? const EmptyStateView(
+                icon: Icons.folder_off_outlined,
+                title: 'VAULT EMPTY',
+                message: 'Files received from nearby devices will appear here.',
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                itemCount: visibleFiles.isEmpty ? 3 : visibleFiles.length + 2,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'RECEIVED FILES',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.7,
+                            ),
+                          ),
+                          Text(
+                            '${_files.length} files',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: AirCryptColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  if (index == 1) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: TextField(
+                        onChanged: (value) => setState(
+                          () => _filter = value.trim().toLowerCase(),
+                        ),
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search, size: 18),
+                          hintText: 'Filter files...',
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  if (visibleFiles.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.only(top: 32),
+                      child: EmptyStateView(
+                        icon: Icons.search_off,
+                        title: 'NO MATCHES',
+                        message: 'Try another file name.',
+                      ),
+                    );
+                  }
+
+                  final file = visibleFiles[index - 2];
+                  return CyberCard(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
                       children: [
-                        Icon(
-                          Icons.folder_off_outlined,
-                          size: 56,
-                          color: AirCryptColors.textMuted,
+                        const Icon(
+                          Icons.description_outlined,
+                          size: 20,
+                          color: AirCryptColors.textPrimary,
                         ),
-                        SizedBox(height: 16),
-                        Text(
-                          'NO RECEIVED FILES IN VAULT',
-                          style: TextStyle(
-                            color: AirCryptColors.textSecondary,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _fileName(file),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _fileDetails(file),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  color: AirCryptColors.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        SizedBox(height: 6),
-                        Text(
-                          'Files transferred from nearby peers will appear here.',
-                          style: TextStyle(
-                            color: AirCryptColors.textMuted,
-                            fontSize: 12,
-                          ),
+                        const SizedBox(width: 8),
+                        CyberBadge(
+                          label: _fileName(file).split('.').last.toUpperCase(),
+                          color: AirCryptColors.textPrimary,
                         ),
                       ],
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _files.length,
-                    itemBuilder: (context, index) {
-                      final file = _files[index];
-
-                      return CyberCard(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: AirCryptColors.accentCyan.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.insert_drive_file_outlined,
-                                color: AirCryptColors.accentCyan,
-                                size: 22,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _fileName(file),
-                                    style: const TextStyle(
-                                      color: AirCryptColors.textPrimary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    file.path,
-                                    style: const TextStyle(
-                                      color: AirCryptColors.textMuted,
-                                      fontSize: 11,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+                  );
+                },
+              ),
       ),
     );
   }

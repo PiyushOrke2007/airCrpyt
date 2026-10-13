@@ -72,11 +72,8 @@ class _IncomingTransferDialogState extends State<IncomingTransferDialog> {
     return Dialog(
       backgroundColor: AirCryptColors.bgSurface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: AirCryptColors.accentCyan.withOpacity(0.5),
-          width: 1.5,
-        ),
+        borderRadius: BorderRadius.zero,
+        side: const BorderSide(color: AirCryptColors.cardBorder, width: 1.2),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -89,10 +86,6 @@ class _IncomingTransferDialogState extends State<IncomingTransferDialog> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AirCryptColors.accentCyan.withOpacity(0.12),
-                    shape: BoxShape.circle,
-                  ),
                   child: const Icon(
                     Icons.security,
                     color: AirCryptColors.accentCyan,
@@ -105,16 +98,15 @@ class _IncomingTransferDialogState extends State<IncomingTransferDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'INCOMING TRANSFER',
+                        '[ INCOMING TRANSFER ]',
                         style: TextStyle(
                           color: AirCryptColors.textPrimary,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 15,
-                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
                         ),
                       ),
                       Text(
-                        'Explicit authorization required',
+                        'APPROVAL REQUIRED',
                         style: TextStyle(
                           color: AirCryptColors.textSecondary,
                           fontSize: 11,
@@ -159,21 +151,24 @@ class _IncomingTransferDialogState extends State<IncomingTransferDialog> {
             // Transfer Payload Details Card
             CyberCard(
               padding: const EdgeInsets.all(16),
-              borderColor: AirCryptColors.accentCyan.withOpacity(0.2),
+              borderColor: AirCryptColors.accentCyan.withValues(alpha: 0.2),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.devices, size: 16, color: AirCryptColors.accentCyan),
+                      const Icon(
+                        Icons.devices,
+                        size: 16,
+                        color: AirCryptColors.accentCyan,
+                      ),
                       const SizedBox(width: 8),
                       const Text(
-                        'FROM SENDER:',
+                        'FROM',
                         style: TextStyle(
                           color: AirCryptColors.textMuted,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 1.0,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -183,7 +178,7 @@ class _IncomingTransferDialogState extends State<IncomingTransferDialog> {
                           style: const TextStyle(
                             color: AirCryptColors.textPrimary,
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 11,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -196,10 +191,14 @@ class _IncomingTransferDialogState extends State<IncomingTransferDialog> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.insert_drive_file_outlined, size: 16, color: AirCryptColors.accentCyan),
+                          const Icon(
+                            Icons.insert_drive_file_outlined,
+                            size: 16,
+                            color: AirCryptColors.accentCyan,
+                          ),
                           const SizedBox(width: 6),
                           Text(
-                            '${widget.fileCount} File${widget.fileCount == 1 ? '' : 's'}',
+                            '${widget.fileCount.toString().padLeft(2, '0')} FILE${widget.fileCount == 1 ? '' : 'S'}',
                             style: const TextStyle(
                               color: AirCryptColors.textPrimary,
                               fontSize: 13,
@@ -223,11 +222,15 @@ class _IncomingTransferDialogState extends State<IncomingTransferDialog> {
             // Explicit Security Consent Note
             Row(
               children: const [
-                Icon(Icons.lock_outline, size: 14, color: AirCryptColors.accentGreen),
+                Icon(
+                  Icons.lock_outline,
+                  size: 14,
+                  color: AirCryptColors.accentGreen,
+                ),
                 SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'No data will be transferred until you accept.',
+                    'NO DATA MOVES UNTIL YOU ACCEPT.',
                     style: TextStyle(
                       color: AirCryptColors.textSecondary,
                       fontSize: 11,
@@ -244,7 +247,7 @@ class _IncomingTransferDialogState extends State<IncomingTransferDialog> {
               children: [
                 Expanded(
                   child: CyberButton(
-                    label: 'DECLINE',
+                    label: '[ DECLINE ]',
                     isPrimary: false,
                     isDanger: true,
                     onPressed: () => Navigator.of(context).pop(false),
@@ -253,7 +256,7 @@ class _IncomingTransferDialogState extends State<IncomingTransferDialog> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: CyberButton(
-                    label: 'ACCEPT',
+                    label: '[ ACCEPT ]',
                     isPrimary: true,
                     onPressed: () => Navigator.of(context).pop(true),
                   ),
