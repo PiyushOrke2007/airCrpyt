@@ -65,12 +65,9 @@ flutter:
   uses-material-design: true
 
   fonts:
-    - family: Silkscreen
+    - family: Amatic
       fonts:
-        - asset: assets/fonts/Silkscreen-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/Silkscreen-Bold.ttf
-          weight: 700
+        - asset: fonts/AmaticSC-Regular.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -89,9 +86,9 @@ flutter:
   # list giving the asset and other descriptors for the font. For
   # example:
   # fonts:
-  #   - family: Schyler
+  #   - family: Amatic
   #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/AmaticSC-Regular.ttf
   #       - asset: fonts/Schyler-Italic.ttf
   #         style: italic
   #   - family: Trajan Pro

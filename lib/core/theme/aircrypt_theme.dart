@@ -43,7 +43,7 @@ class AirCryptColors {
 class AirCryptTheme {
   AirCryptTheme._();
 
-  static ThemeData get darkTheme {
+  static ThemeData darkTheme([String fontFamily = 'Amatic']) {
     final base = ThemeData.light();
 
     return base.copyWith(
@@ -60,61 +60,61 @@ class AirCryptTheme {
         error: AirCryptColors.accentRed,
         onError: AirCryptColors.bgSurface,
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: AirCryptColors.bgDark,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleSpacing: 8,
         toolbarHeight: 60,
-        iconTheme: IconThemeData(color: AirCryptColors.textPrimary),
+        iconTheme: const IconThemeData(color: AirCryptColors.textPrimary),
         titleTextStyle: TextStyle(
           color: AirCryptColors.textPrimary,
-          fontFamily: 'Silkscreen',
-          fontSize: 13,
+          fontFamily: fontFamily,
+          fontSize: 22,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.6,
         ),
-        actionsIconTheme: IconThemeData(color: AirCryptColors.textPrimary),
+        actionsIconTheme: const IconThemeData(color: AirCryptColors.textPrimary),
       ),
       textTheme: base.textTheme.apply(
-        fontFamily: 'Silkscreen',
+        fontFamily: fontFamily,
         bodyColor: AirCryptColors.textPrimary,
         displayColor: AirCryptColors.textPrimary,
       ),
-      primaryTextTheme: base.primaryTextTheme.apply(fontFamily: 'Silkscreen'),
+      primaryTextTheme: base.primaryTextTheme.apply(fontFamily: fontFamily),
       cardTheme: CardThemeData(
         color: AirCryptColors.cardBg,
         elevation: 0,
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: AirCryptColors.cardBorder, width: 1.2),
+          side: BorderSide(color: AirCryptColors.cardBorder, width: 1.2),
         ),
       ),
-      dividerTheme: DividerThemeData(
+      dividerTheme: const DividerThemeData(
         color: AirCryptColors.cardBorder,
         thickness: 1,
         space: 1,
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AirCryptColors.cardBgElevated,
-        contentTextStyle: const TextStyle(
+        contentTextStyle: TextStyle(
           color: AirCryptColors.textPrimary,
-          fontFamily: 'Silkscreen',
-          fontSize: 10,
+          fontFamily: fontFamily,
+          fontSize: 16,
         ),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: AirCryptColors.cardBorder),
+          side: BorderSide(color: AirCryptColors.cardBorder),
         ),
       ),
-      dialogTheme: DialogThemeData(
+      dialogTheme: const DialogThemeData(
         backgroundColor: AirCryptColors.bgSurface,
         elevation: 16,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: AirCryptColors.cardBorder, width: 1.2),
+          side: BorderSide(color: AirCryptColors.cardBorder, width: 1.2),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -125,11 +125,11 @@ class AirCryptTheme {
               elevation: 4,
               shadowColor: AirCryptColors.accentCyan.withValues(alpha: 0.4),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-              textStyle: const TextStyle(
-                fontSize: 15,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+              textStyle: TextStyle(
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
-                fontFamily: 'Silkscreen',
+                fontFamily: fontFamily,
                 letterSpacing: 0.2,
               ),
             ).copyWith(
@@ -164,11 +164,11 @@ class AirCryptTheme {
                 width: 1.2,
               ),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-              textStyle: const TextStyle(
-                fontSize: 14,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+              textStyle: TextStyle(
+                fontSize: 20,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'Silkscreen',
+                fontFamily: fontFamily,
                 letterSpacing: 0.2,
               ),
               shadowColor: AirCryptColors.textPrimary.withValues(alpha: 0.22),

@@ -21,7 +21,8 @@ class AircryptApp extends StatelessWidget {
     return MaterialApp(
       title: 'AirCrypt',
       debugShowCheckedModeBanner: false,
-      theme: AirCryptTheme.darkTheme,
+      theme: AirCryptTheme.darkTheme('Amatic'),
+
       home: const HomeScreen(),
     );
   }
@@ -59,7 +60,7 @@ class HomeScreen extends StatelessWidget {
                   Text(
                     'FILE_LINK_v1.0',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.8,
                     ),
@@ -99,7 +100,7 @@ class HomeScreen extends StatelessWidget {
                   Text(
                     '[ SHORTCUTS ]',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
                     ),
@@ -108,7 +109,7 @@ class HomeScreen extends StatelessWidget {
                     'STORAGE & LOGS',
                     style: TextStyle(
                       color: AirCryptColors.textMuted,
-                      fontSize: 9,
+                      fontSize: 15,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -158,7 +159,7 @@ class HomeScreen extends StatelessWidget {
                       child: const Text(
                         'LOCAL PEER-TO-PEER  /  ENCRYPTED TRANSFER',
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -205,7 +206,7 @@ class _HomeAction extends StatelessWidget {
                     eyebrow,
                     style: const TextStyle(
                       color: AirCryptColors.textMuted,
-                      fontSize: 9,
+                      fontSize: 14,
                       letterSpacing: 0.8,
                     ),
                   ),
@@ -213,7 +214,7 @@ class _HomeAction extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
                     ),
@@ -221,7 +222,7 @@ class _HomeAction extends StatelessWidget {
                 ],
               ),
             ),
-            const Text('→', style: TextStyle(fontSize: 20)),
+            const Text('→', style: TextStyle(fontSize: 24)),
           ],
         ),
       ),
@@ -250,16 +251,16 @@ class _HomeShortcut extends StatelessWidget {
         leading: Icon(icon, size: 19, color: AirCryptColors.textPrimary),
         title: Text(
           title,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
           subtitle,
           style: const TextStyle(
-            fontSize: 10,
+            fontSize: 15,
             color: AirCryptColors.textSecondary,
           ),
         ),
-        trailing: const Text('→', style: TextStyle(fontSize: 18)),
+        trailing: const Text('→', style: TextStyle(fontSize: 22)),
         dense: true,
       ),
     );
