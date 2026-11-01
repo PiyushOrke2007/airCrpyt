@@ -18,6 +18,7 @@ class TransferProgressScreen extends StatelessWidget {
       case TransferSessionStatus.rejected:
         return AirCryptColors.accentRed;
       case TransferSessionStatus.sending:
+      case TransferSessionStatus.finalizing:
       case TransferSessionStatus.connecting:
         return AirCryptColors.accentCyan;
       case TransferSessionStatus.waiting:
@@ -33,6 +34,8 @@ class TransferProgressScreen extends StatelessWidget {
         return 'Connecting';
       case TransferSessionStatus.sending:
         return 'Sending ${session.progressPercent.toStringAsFixed(0)}%';
+      case TransferSessionStatus.finalizing:
+        return 'Finalizing';
       case TransferSessionStatus.completed:
         return 'Verified';
       case TransferSessionStatus.failed:
@@ -60,6 +63,7 @@ class TransferProgressScreen extends StatelessWidget {
     final hasActive = sessions.any(
       (s) =>
           s.status == TransferSessionStatus.sending ||
+          s.status == TransferSessionStatus.finalizing ||
           s.status == TransferSessionStatus.connecting,
     );
     final hasFailed = sessions.any(
@@ -223,7 +227,13 @@ class TransferProgressScreen extends StatelessWidget {
                                       ? (allSuccessful
                                             ? 'COMPLETE'
                                             : 'FINISHED WITH ERRORS')
-                                      : 'SENDING',
+                                      : (sessions.any(
+                                            (s) =>
+                                                s.status ==
+                                                TransferSessionStatus.finalizing,
+                                          )
+                                            ? 'FINALIZING'
+                                            : 'SENDING'),
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
@@ -379,6 +389,7 @@ class TransferProgressScreen extends StatelessWidget {
                               ),
                             ),
                             if (session.status == TransferSessionStatus.sending ||
+                                session.status == TransferSessionStatus.finalizing ||
                                 session.status == TransferSessionStatus.connecting) ...[
                               const SizedBox(height: 8),
                               Row(

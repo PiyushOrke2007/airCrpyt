@@ -165,6 +165,26 @@ class TransferSender {
               }
             }
           } catch (_) {}
+        } else if (message.type == MessageType.transferCancel) {
+          try {
+            final payload = JsonPayload.decode(message.payload);
+            if (payload['transferId'] == transferId) {
+              final reason =
+                  payload['reason'] as String? ?? 'Transfer canceled by peer';
+              manager.updateSession(
+                transferId,
+                status: TransferSessionStatus.failed,
+                error: reason,
+              );
+              repository.updateTransferStatus(
+                transferId,
+                TransferStatus.cancelled,
+              );
+              if (!completionCompleter.isCompleted) {
+                completionCompleter.completeError(StateError(reason));
+              }
+            }
+          } catch (_) {}
         }
       },
       onError: (err) {
@@ -284,13 +304,37 @@ class TransferSender {
           totalBytesSent += chunkData.length;
 
           final currentProgress = totalSize == 0
-              ? 1.0
-              : (totalBytesSent / totalSize);
+              ? 0.99
+              : (totalBytesSent / totalSize * 0.99).clamp(0.0, 0.99);
           manager.updateSession(
             transferId,
             progress: currentProgress,
             bytesTransferred: totalBytesSent,
           );
+
+          if (totalBytesSent >= 256 * 1024 && session.isExceedingTimeLimit) {
+            final cancelReason =
+                'Transfer estimated time (${session.etaText}) exceeds 30 minutes limit. Transmission canceled.';
+            manager.updateSession(
+              transferId,
+              status: TransferSessionStatus.failed,
+              error: cancelReason,
+            );
+            await repository.updateTransferStatus(
+              transferId,
+              TransferStatus.cancelled,
+            );
+            await sendMessage(
+              ProtocolMessage(
+                type: MessageType.transferCancel,
+                payload: JsonPayload.encode({
+                  'transferId': transferId,
+                  'reason': cancelReason,
+                }),
+              ),
+            );
+            throw StateError(cancelReason);
+          }
         }
 
         await repository.updateTransferFileStatus(
@@ -299,11 +343,21 @@ class TransferSender {
         );
       }
 
+      manager.updateSession(
+        transferId,
+        status: TransferSessionStatus.finalizing,
+        progress: 0.99,
+      );
+
+      final completionTimeoutSeconds =
+          (180 + (totalSize / (100 * 1024)).ceil()).clamp(180, 1800);
+      final completionTimeout = Duration(seconds: completionTimeoutSeconds);
+
       await completionCompleter.future.timeout(
-        responseTimeout,
+        completionTimeout,
         onTimeout: () {
           throw TimeoutException(
-            'Timed out waiting for receiver transfer completion confirmation.',
+            'Timed out waiting for receiver transfer completion confirmation (${completionTimeout.inMinutes} mins).',
           );
         },
       );

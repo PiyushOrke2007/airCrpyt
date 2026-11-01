@@ -203,6 +203,43 @@ class TransferReceiver {
           bytesTransferred: state.totalBytesReceived,
         );
 
+        final session = manager.activeSessions.firstWhere(
+          (s) => s.transferId == transferId,
+          orElse: () => TransferSession(
+            transferId: transferId,
+            deviceId: senderDeviceId,
+            deviceName: senderDeviceName,
+            fileCount: state.metadata.totalFiles,
+            totalBytes: state.metadata.totalSize,
+          ),
+        );
+
+        if (state.totalBytesReceived >= 256 * 1024 &&
+            session.isExceedingTimeLimit) {
+          final cancelReason =
+              'Transfer estimated time (${session.etaText}) exceeds 30 minutes limit. Transmission canceled.';
+          _activeReceives.remove(transferId);
+          await repository.updateTransferStatus(
+            transferId,
+            TransferStatus.cancelled,
+          );
+          manager.updateSession(
+            transferId,
+            status: TransferSessionStatus.failed,
+            error: cancelReason,
+          );
+          await sendMessage(
+            ProtocolMessage(
+              type: MessageType.transferCancel,
+              payload: JsonPayload.encode({
+                'transferId': transferId,
+                'reason': cancelReason,
+              }),
+            ),
+          );
+          return;
+        }
+
         final fileReceivedBytes =
             state.receivedBytesPerFile[chunkMeta.fileId] ?? 0;
         if (fileReceivedBytes >= fileMeta.fileSize ||

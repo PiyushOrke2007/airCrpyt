@@ -2,6 +2,7 @@ enum TransferSessionStatus {
   waiting,
   connecting,
   sending,
+  finalizing,
   completed,
   failed,
   rejected,
@@ -96,6 +97,13 @@ class TransferSession {
     if (bytesPerSecond <= 0 || bytesTransferred <= 0) return null;
     final seconds = (remainingBytes / bytesPerSecond).ceil();
     return seconds < 0 ? 0 : seconds;
+  }
+
+  static const int maxAllowedTransferSeconds = 1800; // 30 minutes
+
+  bool get isExceedingTimeLimit {
+    final sec = estimatedSecondsRemaining;
+    return sec != null && sec > maxAllowedTransferSeconds;
   }
 
   String get speedText {
