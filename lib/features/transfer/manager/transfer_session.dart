@@ -72,6 +72,14 @@ class TransferSession {
         _lastUpdateTime = now;
         _lastBytesTransferred = bytesTransferred;
       }
+
+      if (bytesPerSecond == 0.0 && bytesTransferred > 0) {
+        final totalElapsedSec =
+            now.difference(createdAt).inMilliseconds / 1000.0;
+        if (totalElapsedSec > 0.01) {
+          bytesPerSecond = bytesTransferred / totalElapsedSec;
+        }
+      }
     } else if (newProgress != null) {
       bytesTransferred = (totalBytes * newProgress.clamp(0.0, 1.0)).round();
     }
