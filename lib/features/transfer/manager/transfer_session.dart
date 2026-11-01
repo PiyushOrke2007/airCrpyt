@@ -99,7 +99,7 @@ class TransferSession {
     return seconds < 0 ? 0 : seconds;
   }
 
-  static const int maxAllowedTransferSeconds = 1800; // 30 minutes
+  static const int maxAllowedTransferSeconds = 60; // 1 minute
 
   bool get isExceedingTimeLimit {
     final sec = estimatedSecondsRemaining;

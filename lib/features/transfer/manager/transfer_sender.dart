@@ -314,7 +314,7 @@ class TransferSender {
 
           if (totalBytesSent >= 256 * 1024 && session.isExceedingTimeLimit) {
             final cancelReason =
-                'Transfer estimated time (${session.etaText}) exceeds 30 minutes limit. Transmission canceled.';
+                'Transfer estimated time (${session.etaText}) exceeds 1 minute limit. Transmission canceled.';
             manager.updateSession(
               transferId,
               status: TransferSessionStatus.failed,
