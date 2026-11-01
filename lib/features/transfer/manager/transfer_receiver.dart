@@ -217,7 +217,7 @@ class TransferReceiver {
         if (state.totalBytesReceived >= 256 * 1024 &&
             session.isExceedingTimeLimit) {
           final cancelReason =
-              'Transfer estimated time (${session.etaText}) exceeds 30 minutes limit. Transmission canceled.';
+              'Transfer estimated time (${session.etaText}) exceeds 1 minute limit. Transmission canceled.';
           _activeReceives.remove(transferId);
           await repository.updateTransferStatus(
             transferId,
