@@ -197,7 +197,11 @@ class TransferReceiver {
         final progress = totalSize == 0
             ? 1.0
             : (state.totalBytesReceived / totalSize);
-        manager.updateSession(transferId, progress: progress);
+        manager.updateSession(
+          transferId,
+          progress: progress,
+          bytesTransferred: state.totalBytesReceived,
+        );
 
         final fileReceivedBytes =
             state.receivedBytesPerFile[chunkMeta.fileId] ?? 0;

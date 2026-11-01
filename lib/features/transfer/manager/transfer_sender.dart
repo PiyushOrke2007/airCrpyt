@@ -286,7 +286,11 @@ class TransferSender {
           final currentProgress = totalSize == 0
               ? 1.0
               : (totalBytesSent / totalSize);
-          manager.updateSession(transferId, progress: currentProgress);
+          manager.updateSession(
+            transferId,
+            progress: currentProgress,
+            bytesTransferred: totalBytesSent,
+          );
         }
 
         await repository.updateTransferFileStatus(

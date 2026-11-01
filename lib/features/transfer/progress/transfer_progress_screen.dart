@@ -147,6 +147,25 @@ class TransferProgressScreen extends StatelessWidget {
             final transferredBytes = (overallTotalBytes * overallProgress)
                 .round();
 
+            double totalBytesPerSec = 0.0;
+            int totalRemainingBytes = 0;
+            for (final s in sessions) {
+              totalBytesPerSec += s.bytesPerSecond;
+              totalRemainingBytes += s.remainingBytes;
+            }
+
+            String overallSpeedText = TransferSession.formatSpeed(totalBytesPerSec);
+            String overallEtaText;
+
+            if (allFinished) {
+              overallEtaText = allSuccessful ? 'Complete' : 'Stopped';
+            } else if (totalBytesPerSec > 0) {
+              final sec = (totalRemainingBytes / totalBytesPerSec).ceil();
+              overallEtaText = TransferSession.formatDuration(sec);
+            } else {
+              overallEtaText = 'Calculating...';
+            }
+
             return SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               child: Column(
@@ -226,6 +245,64 @@ class TransferProgressScreen extends StatelessWidget {
                             letterSpacing: 0.2,
                           ),
                         ),
+                        if (!allFinished) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AirCryptColors.cardBgElevated,
+                              border: Border.all(
+                                color: AirCryptColors.cardBorder,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.bolt_outlined,
+                                  size: 14,
+                                  color: AirCryptColors.accentCyan,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  overallSpeedText,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: AirCryptColors.textPrimary,
+                                  ),
+                                ),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 8),
+                                  child: Text(
+                                    '•',
+                                    style: TextStyle(
+                                      color: AirCryptColors.textMuted,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.timer_outlined,
+                                  size: 14,
+                                  color: AirCryptColors.textSecondary,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  overallEtaText,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: AirCryptColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -301,6 +378,52 @@ class TransferProgressScreen extends StatelessWidget {
                                 backgroundColor: AirCryptColors.cardBorder,
                               ),
                             ),
+                            if (session.status == TransferSessionStatus.sending ||
+                                session.status == TransferSessionStatus.connecting) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.bolt_outlined,
+                                        size: 13,
+                                        color: AirCryptColors.accentCyan,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        session.speedText,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: AirCryptColors.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.timer_outlined,
+                                        size: 13,
+                                        color: AirCryptColors.textSecondary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        session.etaText,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: AirCryptColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
                             if (session.error != null) ...[
                               const SizedBox(height: 10),
                               Row(

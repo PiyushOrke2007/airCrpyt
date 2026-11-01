@@ -103,7 +103,9 @@ void main() {
         await receiver.handleMessage(
           msg,
           (reply) async {
-            receiverToSender.add(reply);
+            if (!receiverToSender.isClosed) {
+              receiverToSender.add(reply);
+            }
           },
           senderDeviceId: 'sender_1',
           senderDeviceName: 'Sender Laptop',

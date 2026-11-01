@@ -21,6 +21,7 @@ class TransferManager {
     String transferId, {
     TransferSessionStatus? status,
     double? progress,
+    int? bytesTransferred,
     String? error,
   }) {
     final session = _sessions.firstWhere(
@@ -28,17 +29,12 @@ class TransferManager {
       orElse: () => throw StateError('Unknown transfer session: $transferId'),
     );
 
-    if (status != null) {
-      session.status = status;
-    }
-
-    if (progress != null) {
-      session.progress = progress.clamp(0.0, 1.0);
-    }
-
-    if (error != null) {
-      session.error = error;
-    }
+    session.updateProgress(
+      newProgress: progress,
+      newBytesTransferred: bytesTransferred,
+      newStatus: status,
+      newError: error,
+    );
 
     _emit();
   }
