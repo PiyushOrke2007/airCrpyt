@@ -1,822 +1,1395 @@
-# airCrypt — Implementation Plan & Living Handoff Log
+# AirCrypt Secure Transfer Implementation Plan
 
-> **Read this file first, every session, before writing any code.**
-> This is the single source of truth for what this project is, what already
-> exists, what has been built in past agent sessions, what is currently
-> working/broken, and what to do next. If you are a coding agent picking this
-> project up — including mid-task — your job is:
->
-> 1. Read `## Task Checklist` to see exactly what is done / in-progress / not started.
-> 2. Read the most recent entries under `## Implementation Log` (newest at the bottom).
-> 3. Read `## HANDOFF` (always kept up to date at the very end of this file).
-> 4. **Do not redo anything marked `[x]` in the Task Checklist.** If something marked
-     > done looks wrong, verify it first (run/read the code), then note the discrepancy
-     > in a new log entry — don't silently rewrite it.
-> 5. Work on **one phase at a time**. Do not attempt the entire plan in one task.
-> 6. Within a phase, implement one logical sub-step at a time and test it before continuing.
-> 7. Update the Task Checklist and append a new `## Implementation Log` entry after every
-     > meaningful sub-step; do not wait until the whole phase is finished.
-> 8. When a phase is complete, update `## HANDOFF`, clearly record what remains, and stop.
-     > The next agent/session must continue from that handoff.
+## 0. Purpose
 
----
+This plan defines the implementation of end-to-end file encryption and integrity protection for AirCrypt.
 
-## 1. Project Overview
+The implementation target is the existing Flutter/Dart AirCrypt codebase. The agent must first review the complete existing codebase and understand the current transfer/protocol flow before modifying production code.
 
-**airCrypt** is a Flutter app for sharing files directly between devices on the
-same Wi-Fi network — no internet, no cloud server, no central relay. One device
-discovers others via UDP broadcast, then a direct TCP connection is opened
-between sender and receiver to move the file bytes. This plan focuses
-entirely on getting real file transfer working end-to-end — discovery,
-connection, chunked send/receive, multi-recipient fan-out, progress, and UI.
+The implementation requested by the project owner is:
 
-Today the app is a **skeleton with strong plumbing but no working file
-transfer**: discovery works, a raw framed TCP protocol works, a local SQLite
-schema for transfer history exists, and file-storage directories
-(`Received/Sent/Temporary/Trash`) exist — but nothing yet reads a file from
-disk, chunks it, sends it, or writes it back out on the other end. That's the
-core of what this plan builds.
+1. AES-256-GCM encryption for every file chunk.
+2. A fresh AES-256 session key for every transfer.
+3. A fresh RSA-2048 key pair for every transfer.
+4. RSA-OAEP using SHA-256 to protect the AES session key.
+5. A SHA-256 checksum for every encrypted chunk.
+6. Receiver-side checksum verification before decryption/acceptance.
+7. Reverse workflow for decryption and reconstruction.
+8. Cryptographic implementation in the project code itself; no cloud/API/online cryptography service and no third-party cryptography package.
+9. A separate critic-agent review after implementation.
+10. `plan.md` is the persistent implementation log and must be updated throughout the work.
 
-**Target platforms:** Android and iOS primarily (per UI asks about touch
-controls, notifications); the Flutter project also has
-Windows/macOS/Linux/Web scaffolding from `flutter create`, but no
-platform-specific work has been done for those and, they are **out of scope**
-unless the user asks otherwise.
+The existing AirCrypt SRS specifies AES-256, RSA-2048, SHA-256, chunked transfer, integrity verification, and reverse receiver-side processing. This plan deliberately updates the AES mode to AES-256-GCM and RSA padding to RSA-OAEP-SHA256 according to the owner's clarified requirements.
 
 ---
 
-## 2. Current Architecture
+## 1. Non-negotiable constraints
 
-```
-UI (features/*)
-   ↓
-Device Discovery (UdpDiscoveryService)
-   ↓
-Device Selection (DeviceScreen — currently single-select, tap-to-connect)
-   ↓
-TCP Connection (TcpServer / TcpClient / TcpConnection, via ConnectionHandler)
-   ↓
-Protocol (ProtocolEncoder/Decoder/StreamParser — generic binary framing)
-   ↓
-File Transfer  ← NOT YET IMPLEMENTED (this is the main gap)
-   ↓
-Storage (FileStorageService — directories exist, nothing writes real transferred files yet)
-```
+### 1.1 Cryptography
 
-Component communication today:
+The following algorithms and parameters are fixed:
 
-- `ConnectionHandler` owns one `UdpDiscoveryService` + one `TcpServer` + (at
-  most) one `TcpClient`, and is the glue the `DeviceScreen` UI talks to. It
-  currently only implements a `hello` / `helloResponse` handshake — a
-  proof-of-concept "can these two devices talk" flow, not a real transfer.
-- `TcpServer` accepts multiple incoming sockets and wraps each as a
-  `TcpConnection`; `TcpConnection`/`TcpClient` both use `ProtocolStreamParser`
-  to turn a raw byte stream back into discrete `ProtocolMessage`s (length-prefixed
-  framing, so TCP's stream nature is already handled correctly).
-- `ProtocolMessage` is generic: a `MessageType` enum + raw `payload` bytes.
-  `MessageType` already lists every value we need
-  (`transferRequest`, `transferAccept`, `transferReject`, `transferMetadata`,
-  `fileStart`, `chunk`, `chunkAck`, `chunkRetransmit`, `transferPause/Resume/Cancel`,
-  `transferComplete`, `transferFailed`) — **none of these are sent or handled
-  anywhere yet**. Only `hello`/`helloResponse` are used.
-- `TransferRepository` (SQLite via `sqflite`) has `Transfer` and `TransferFile`
-  rows with rich status enums already covering the whole lifecycle, but only
-  `insertTransfer`/`getTransfer`/`getAllTransfers`/`insertTransferFile`/`getTransferFiles`
-  exist — **no update-status methods yet**, so nothing is ever updated after insert.
-- `FileStorageService` already creates and exposes `Received/`, `Sent/`,
-  `Temporary/`, `Trash/` directories under the app's documents dir, plus
-  trash/move helpers. This is exactly what chunked receiving needs
-  (write to `Temporary/`, move to `Received/` on completion) and it already exists.
+- AES-256-GCM
+  - 256-bit AES key.
+  - Independent GCM nonce/IV for every encrypted chunk.
+  - Never reuse the same `(AES key, nonce)` pair.
+  - Authentication tag must be preserved and transmitted with the chunk.
+- RSA-2048
+  - Fresh key pair for every transfer.
+  - RSA-OAEP.
+  - OAEP hash: SHA-256.
+  - MGF1 hash: SHA-256.
+- SHA-256
+  - Compute over the complete transmitted encrypted-chunk representation selected by the protocol.
+  - The receiver recomputes the SHA-256 value before accepting/decrypting a chunk.
+- Cryptographic randomness must come from a secure OS-backed randomness source available to the Dart/Flutter application.
+- No hard-coded keys.
+- No fixed IV/nonces.
+- No reuse of session keys between transfers.
+- No plaintext AES key on the network.
 
----
+### 1.2 No online/third-party cryptography
 
-## 3. Existing File Transfer Infrastructure
+Do not use:
 
-### Already implemented
+- Cloud cryptography APIs.
+- Web APIs for encryption.
+- Remote key-generation services.
+- Online hashing services.
+- Third-party cryptography packages.
 
-| Piece                                          | File                                                                                                                         | Notes                                                                                                                                                                                                                                                                                                                      |
-|------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| UDP peer discovery + timeout/offline detection | `finder/udp_discovery_service.dart`                                                                                          | Broadcasts every 1s, marks offline after 3s silence. Solid, don't touch.                                                                                                                                                                                                                                                   |
-| TCP server (multi-connection)                  | `tcp_server.dart`                                                                                                            | Accepts many sockets, wraps each in `TcpConnection`.                                                                                                                                                                                                                                                                       |
-| TCP client (single outbound)                   | `tcp_client.dart`                                                                                                            | One connection at a time. **Will need to become "one TcpClient per recipient device"** for multi-device send (Phase 4/5 below).                                                                                                                                                                                            |
-| Length-prefixed binary framing                 | `protocol/protocol_encoder.dart`, `protocol_decoder.dart`, `protocol_stream_parser.dart`                                     | 12-byte header: magic(4) + version(1) + type(1) + reserved(2) + payloadLength(4), then raw payload. Already handles partial/combined TCP reads correctly. **This framing is payload-agnostic — a chunk's raw bytes can go straight into `payload` with no base64/JSON overhead**, which matters for large-file throughput. |
-| Message type vocabulary                        | `protocol/message_type.dart`                                                                                                 | Every transfer-lifecycle message type is already named in the enum.                                                                                                                                                                                                                                                        |
-| Transfer JSON models                           | `protocol/transfer_request.dart`, `transfer_metadata.dart`, `file_metadata.dart`, `chunk_metadata.dart`, `json_payload.dart` | Structurally exactly what's needed for handshake/metadata messages (JSON-encode via `JsonPayload`, send as the `payload` of a `ProtocolMessage`). **Not wired into any send/receive code path yet.**                                                                                                                       |
-| DB schema for transfers & files                | `core/database/database_service.dart`, `transfer_repository.dart`                                                            | `transfers` and `transfer_files` tables exist with migrations already at v4.                                                                                                                                                                                                                                               |
-| Domain models w/ lifecycle enums               | `core/models/transfer.dart`, `transfer_file.dart`                                                                            | `TransferStatus` already includes `waitingForAcceptance`, `transferring`, `paused`, `failed`, etc. — the state machine is already designed, just not driven by anything.                                                                                                                                                   |
-| File storage directories + trash               | `core/services/file_storage_service.dart`, `trash_service.dart`                                                              | `Received/Sent/Temporary/Trash` dirs, trash-with-expiry already works and is used by a real Trash screen.                                                                                                                                                                                                                  |
-| Device identity                                | `core/services/device_identity_service.dart`, `local_device_service.dart`                                                    | Stable per-install UUID + display name, used by discovery and handshake.                                                                                                                                                                                                                                                   |
-| Incoming-connection UI hook                    | `finder/device_screen.dart` → `_handleIncomingRequest`                                                                       | Shows a blocking `AlertDialog` on incoming `hello`. **No timeout, no `transferId`, and it's a generic "connect" dialog, not the file-transfer-specific popup Phase 6 needs.**                                                                                                                                              |
+Existing non-cryptographic project dependencies may remain unless the agent discovers that a dependency is specifically performing the cryptographic operations.
 
-### Partially implemented
+The cryptographic primitives must be implemented locally in project code.
 
-| Piece                   | Gap                                                                                                                                                                                                                   |
-|-------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `DeviceScreen`          | Only supports selecting **one** device, and only performs a `hello` handshake — no file has been picked yet at that point, no checkboxes, no "Select All".                                                            |
-| `ConnectionHandler`     | Only handles `hello`. Has exactly one `_tcpClient` field, so it **cannot** hold parallel connections to multiple recipients — needs to become a map of per-device connections/handlers.                               |
-| `TransferRepository`    | Insert/read only — no `updateTransferStatus`, `updateTransferFileStatus`, or progress-percent persistence.                                                                                                            |
-| Incoming-request dialog | Exists but is a generic connect prompt with no timeout and no file/size info — must be rebuilt into the Phase 6 popup.                                                                                                |
-| Settings screen         | Links to `TcpSenderScreen`/`TcpReceiverScreen`, which are raw manual-IP debug screens for testing the socket layer only (not reachable from the main "Send/Receive" flow). Leave as a dev tool unless told to remove. |
+### 1.3 Important engineering rule
 
-### Missing entirely
+Do NOT implement cryptographic primitives from memory without standards-based tests.
 
-- File picker (no `file_picker`/`file_selector` dependency in `pubspec.yaml`).
-- Any chunk reader/writer, any file-transfer manager, any sender/receiver classes.
-- Multi-recipient / multi-connection transfer orchestration.
-- Progress tracking & UI (per-recipient progress list).
-- Transfer-request popup with timeout tied to a real `transferId`.
-- Notifications (no `flutter_local_notifications` or similar dependency; no Android notification
-  channel/permission configured).
-- The "Liquid Glass" visual redesign — current UI is stock Material 3, functional but plain.
-- `ConnectionManager`/`connection_state.dart` — written but **never referenced anywhere** (dead code
-  from an earlier iteration of `ConnectionHandler`). Leave in place unless it gets in the way; do
-  not build on top of it, build on `ConnectionHandler`.
+The agent must implement and test against published/standard test vectors for:
 
-### Needs modification
+- SHA-256
+- AES
+- GCM
+- RSA
+- RSA-OAEP
+- MGF1
+- modular arithmetic/primality routines used by RSA generation
 
-- `main.dart` — "Receive Files" button's `onPressed` is already an empty
-  no-op (never wired to a screen), so **removing it is a trivial UI deletion**,
-  not a functional regression. "Send Files" currently jumps straight to
-  `DeviceScreen` (device-first); Phase 4 below flips this to file-first.
-- `DeviceScreen` — becomes multi-select with checkboxes, and moves from
-  "standalone connect demo" to "recipient picker after file selection."
-- `ConnectionHandler` — becomes transfer-aware and multi-connection-aware.
+If a primitive cannot be implemented and verified correctly, the agent must stop and record the issue in `plan.md` rather than silently shipping an unverified implementation.
 
 ---
 
-## 4. Current UI Analysis
+## 2. Existing project review required before implementation
 
-| Screen                           | File                                                 | Current purpose                                               | Current controls                                                                  | Current problems                                                                                       | What needs to change                                                                                                              |
-|----------------------------------|------------------------------------------------------|---------------------------------------------------------------|-----------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
-| Home                             | `main.dart`                                          | Entry point, navigation hub                                   | "Send Files", "Receive Files" (dead button), list tiles to Received/History/Trash | Receive button does nothing; no indication receiving is automatic                                      | Remove Receive button; add a persistent "listening" indicator instead                                                             |
-| Device / Send flow               | `finder/device_screen.dart`                          | Currently: pick **one** device and handshake with it          | Tap a device row to connect                                                       | No file has been picked before this screen; single-select only; incoming-request dialog has no timeout | Becomes step 2 of Send Files (after file picker): multi-select with checkboxes + Select All; tapping "Send" starts real transfers |
-| TCP Sender/Receiver test screens | `tcp_sender_screen.dart`, `tcp_receiver_screen.dart` | Manual-IP raw socket debug tool, reachable only from Settings | IP field, Connect/Send/Disconnect buttons                                         | Not part of the real user flow                                                                         | Leave as-is (developer tool) unless asked to remove                                                                               |
-| Received Files                   | `features/files/received_files_screen.dart`          | Lists files in the `Received/` directory                      | List view                                                                         | Fine as-is; will start showing real content once transfers write there                                 | No structural change needed, just becomes populated                                                                               |
-| Transfer History                 | `features/history/transfer_history_screen.dart`      | Lists rows from `transfers` table                             | List view                                                                         | Will be empty until transfers are actually inserted/updated                                            | No structural change, but repository needs update-methods so status shown is accurate                                             |
-| Trash                            | `features/trash/trash_screen.dart`                   | Lists/restores/permanently-deletes trashed files              | List view + actions                                                               | Already functional, unrelated to transfer work                                                         | None                                                                                                                              |
-| Settings                         | `features/settings/settings_screen.dart`             | Device name, links to TCP test screens                        | Text field, buttons                                                               | Fine                                                                                                   | None required by this plan                                                                                                        |
+Before modifying code, the implementation agent must inspect all relevant Dart code, not only the currently visible TCP files.
 
----
+At minimum review:
 
-## 5. Required Changes (Implementation Plan)
+```text
+lib/main.dart
 
-This follows the **Implementation Order** below. Execute **one phase at a time**.
-Do not implement later phases early unless a dependency requires a small supporting change.
-After each meaningful sub-step, update `plan.md`; after each phase, update `## HANDOFF`
-and stop so the next agent/session can continue cleanly.
+lib/core/
+  database/
+  models/
+  services/
+  security/
 
-### 5.1 File selection
+lib/features/files/
+lib/features/history/
+lib/features/settings/
+lib/features/trash/
 
-- Add `file_picker` (or `file_selector`) dependency; support multi-file pick,
-  any extension/MIME type (no filtering).
-- New `SendFlow`/`FileSelectionScreen` (or repurpose `main.dart`'s "Send
-  Files" button) that opens the picker **first**, then routes into
-  `DeviceScreen` with the picked files passed along.
-
-### 5.2 Transfer manager & protocol wiring
-
-- New `transfer/` module (structure per Section 6) with a `TransferManager`
-  that:
-    - Builds a `TransferRequest`/`TransferMetadata` from picked files + target
-      device, sends it over a (new, per-recipient) `TcpClient` connection.
-    - On the receiving side, `ConnectionHandler`/`TcpServer` routes
-      `transferRequest` messages to a callback the UI turns into the Phase 6 popup.
-    - Wires `transferAccept` / `transferReject` / `transferMetadata` /
-      `fileStart` / `chunk` / `chunkAck` / `transferComplete` / `transferFailed`
-      message types (already defined in `message_type.dart`, currently unused)
-      into real send/receive logic.
-
-### 5.3 Chunked sending
-
-- `ChunkReader`: streams a file off disk in fixed-size chunks (start at 64
-  KB, matching the methodology doc; make it a constant so it's easy to tune
-  or later adapt dynamically) — **never `File.readAsBytes()` the whole file**.
-- Each chunk sent as a `ProtocolMessage(type: .chunk, payload: rawChunkBytes)`
-  on the connection for that recipient, preceded by a small JSON
-  `ChunkMetadata`-carrying message (or a compact binary header — JSON is fine
-  at this scale and keeps things debuggable) identifying `transferId`,
-  `fileId`, `chunkIndex`, `totalChunks`.
-
-### 5.4 Chunked receiving
-
-- `ChunkWriter`: writes incoming chunks to a temp file in
-  `FileStorageService.getTemporaryDirectory()`, keyed by `transferId`/`fileId`,
-  in order (buffer/reorder out-of-order chunks if TCP framing theoretically
-  allows it — in practice a single TCP stream keeps order, but keep the index
-  check as a correctness guard rather than assuming).
-- On `totalChunks` reached: verify size against `FileMetadata.fileSize`, move
-  from `Temporary/` to `Received/` via existing `FileStorageService`, send
-  `transferComplete` (or `transferFailed` + reason) back to sender.
-
-### 5.5 Reconstruction/storage
-
-- Reuses existing `FileStorageService` — no new storage abstraction needed,
-  just call it from the new receiver code.
-- Add `updateTransferStatus`/`updateTransferFileStatus` (and a progress
-  column/field if useful) to `TransferRepository` so history reflects reality.
-
-### 5.6 Transfer state/progress
-
-- Extend `TransferFile`/DB row or keep progress in-memory in
-  `TransferManager` (persist at minimum: status transitions; live
-  byte-progress can stay in-memory and be recomputed on resume) — decide and
-  document the choice in the log when you get here.
-- Each recipient gets its own transfer/connection/status/progress objects —
-  **no shared/global transfer state** (see 5.8).
-
-### 5.7 Multi-device selection (UI)
-
-- `DeviceScreen` gains a checkbox per row + a "Select All" checkbox at the
-  top, tri-state-correct (checked / unchecked / indeterminate feel achieved
-  via a plain bool synced from individual selections, per the mega-prompt's
-  example behavior).
-- "Send" button enabled once ≥1 file and ≥1 device are selected.
-
-### 5.8 Multi-recipient transfers
-
-- `TransferManager` fans out: one independent `{transferId, TcpClient
-connection, status, progress, error}` per recipient, started concurrently
-  (`Future.wait` or per-recipient isolate-free async loop — no isolates
-  needed for this I/O-bound work). A slow/failed recipient must not block or
-  fail the others.
-- Progress UI: simple list (`Laptop 100% Completed`, `Phone 67% Sending`,
-  `Desktop 0% Waiting`), one row per recipient, updated via a stream/notifier
-  from `TransferManager`.
-
-### 5.9 Incoming-request popup + timeout
-
-- Replace the generic connect `AlertDialog` in `DeviceScreen` with a
-  transfer-specific dialog (from/file/size, Accept/Reject) shown from wherever
-  `ConnectionHandler` now surfaces `transferRequest` messages.
-- Timer-based auto-timeout (20–30s, no existing project convention to match)
-  that closes the dialog and sends `transferReject`/lets the request expire
-  if the user doesn't respond.
-- Key every request by the transfer's `transferId` (already a field on
-  `TransferRequest`) — never by IP — and track "already answered" state so a
-  duplicate/retransmitted request can't reopen the dialog.
-
-### 5.10 Remove "Receive Files" button
-
-- Trivial: delete the button + its (already empty) handler from `main.dart`.
-  Optionally replace with a small "Ready to receive" status indicator on the
-  home screen, since receiving is otherwise invisible when idle.
-
-### 5.11 Notifications
-
-- Add `flutter_local_notifications` (not currently a dependency).
-- Configure Android notification channel + `POST_NOTIFICATIONS` permission
-  (Android 13+) in the manifest; iOS permission request on first launch.
-- Single updating notification per active transfer for progress (not one per
-  chunk); separate notifications for request/accepted/rejected/started/completed/failed.
-
-### 5.12 Liquid Glass UI redesign
-
-- Do last, once the functional flow works end-to-end, per the Implementation
-  Order — visual work on top of a moving target wastes effort.
-- Establish one small shared "glass" widget set (glass card, glass button,
-  themed dialog) and reuse across screens rather than redesigning each screen
-  bespoke.
-
----
-
-## 6. Suggested File Structure for New Code
-
-```
 lib/features/transfer/
-├── manager/
-│   ├── transfer_manager.dart        # orchestrates all active transfers, one per recipient
-│   ├── transfer_session.dart        # per-recipient: connection + status + progress + error
-│   └── transfer_request_handler.dart# routes incoming transferRequest → UI popup callback
-├── io/
-│   ├── chunk_reader.dart
-│   └── chunk_writer.dart
-├── protocol/                        # existing — extend, don't duplicate
-└── finder/                          # existing DeviceScreen etc. — extend for multi-select
+  connection/
+  finder/
+  protocol/
+  incoming_message.dart
+  tcp_client.dart
+  tcp_connection.dart
+  tcp_receiver_screen.dart
+  tcp_sender_screen.dart
+  tcp_server.dart
+
+pubspec.yaml
 ```
 
-Adapt as the work proceeds; this is a starting point, not a mandate — note any
-deviation (and why) in the Implementation Log.
+Also inspect:
+
+- Android/iOS configuration only where required for secure randomness, file I/O, or platform constraints.
+- Existing tests.
+- Existing README/project documentation if present.
+- Existing Git history/branches if available locally.
+
+### Review objective
+
+Trace the real data flow:
+
+```text
+UI
+ ↓
+file selection
+ ↓
+transfer request
+ ↓
+ProtocolMessage
+ ↓
+ProtocolEncoder
+ ↓
+TCP
+ ↓
+ProtocolStreamParser
+ ↓
+ProtocolMessage
+ ↓
+receiver
+ ↓
+chunk verification
+ ↓
+decryption
+ ↓
+file reconstruction
+```
+
+The agent must identify the actual production path rather than assuming that `tcp_client.dart` itself is the file-transfer layer.
 
 ---
 
-## 7. Task Checklist
+## 3. Current-code findings that must be verified during review
 
-Legend: `[ ]` not started · `[~]` in progress · `[x]` done & verified · `[!]` blocked/issue (explain
-in log)
+The supplied code snapshot currently contains a protocol abstraction with:
 
-- [x] **Phase 1 — Full code review** (this document)
-- [x] **Phase 2 — `plan.md` created**
-- [x] **Phase 3 — File transfer core**
-    - [x] Add `file_picker` dependency
-    - [x] `ChunkReader` (streamed, fixed-size chunks)
-    - [x] `ChunkWriter` (temp file → verified → moved to `Received/`)
-    - [x] `TransferManager` + `TransferSession` (per-recipient state)
-    - [x] Wire `transferRequest/Accept/Reject/Metadata/fileStart/chunk/chunkAck/Complete/Failed`
-      messages end-to-end
-    - [x] `TransferRepository`: add status/progress update methods
-    - [x] Error handling: connection failure, rejection, timeout, disconnect mid-transfer, invalid
-      metadata, write failure, duplicate request
-- [x] **Phase 4 — Send Files menu (file-first flow)**
-    - [x] File picker screen before device picker
-    - [x] `DeviceScreen`: checkboxes + Select All, correct tri-state sync
-    - [x] Multi-recipient fan-out send
-    - [x] Per-recipient progress list UI
-- [x] **Phase 5 — Remove Receive Files button**
-- [x] **Phase 6 — Incoming file request popup**
-    - [x] Transfer-specific dialog (from/file/size)
-    - [x] Timeout (20–30s)
-    - [x] `transferId`-keyed, no repeat-show on accept/reject/timeout
-- [ ] **Phase 7 — Notifications**
-    - [ ] Add `flutter_local_notifications`, Android channel + permission
-    - [ ] Request/accepted/rejected/started/progress(single updating)/completed/failed events
-- [ ] **Phase 8 — Liquid Glass UI redesign**
-- [ ] **Phase 9 — Testing** (see Section 9 checklist below, mirror results into log)
-- [ ] **Phase 10 — Code quality pass** (split any file that grew too large)
-- [ ] **Phase 11 — Final handoff update**
+```text
+ProtocolMessage
+ProtocolEncoder
+ProtocolDecoder
+ProtocolStreamParser
+MessageType
+ChunkMetadata
+FileMetadata
+TransferMetadata
+TransferRequest
+```
 
----
+The current `TcpClient.sendMessage()` encodes a `ProtocolMessage` and writes the encoded bytes to the socket.
 
-## 8. Testing Checklist (fill in results per phase in the log, don't wait for the end)
+Therefore:
 
-- [x] Discovery: A sees B, B sees A
-- [x] File selection: multiple file types (image, PDF, docx, zip, video, apk-sized binary)
-- [x] Single-device transfer A → B
-- [x] Multi-device transfer A → {B, C, D} concurrently
-- [x] Large file (well beyond a few MB) — confirm streaming, not full in-memory load
-- [x] Request handling: accept / reject / timeout / duplicate request
-- [x] Connection failure: receiver closes app mid-transfer / Wi-Fi drops / TCP connect fails
-- [ ] Notifications fire for each defined event, progress uses one updating notification
-- [x] UI: long filenames, large sizes, many devices, zero devices, partial selection, Select All
-  toggle + individual deselect after Select All
+- Do not put encryption blindly inside `TcpClient.sendMessage()`.
+- Encryption must occur at the file/chunk security boundary before the encrypted chunk becomes a protocol payload.
+- The protocol must be extended in a backward-consistent way to carry security metadata.
 
-For anything that can't be tested in this environment (no physical devices /
-no emulator network), **say so explicitly in the log** — don't claim it works.
+The supplied snapshot also contains a file named:
+
+```text
+lib/core/security/encryption
+```
+
+whose current contents appear to be copied TCP-client code rather than a cryptographic implementation.
+
+The agent must inspect this and replace/fix it as part of the security-layer cleanup.
+
+The current discovery implementation broadcasts:
+
+```text
+magic
+device id
+device name
+tcp port
+```
+
+and does not currently advertise an RSA public key. The agent must therefore design the RSA public-key availability/handshake correctly rather than assuming it already exists.
+
+The current protocol `MessageType` already has handshake, verification challenge/response, transfer request, metadata, chunk, acknowledgement, and retransmission message types. Reuse those existing concepts where possible instead of creating unnecessary duplicate message types.
 
 ---
 
-## Implementation Log
+## 4. Required security architecture
 
-### 2026-09-25 16:08 UTC — Session 0 (review + plan)
+Recommended structure:
 
-#### Completed
+```text
+lib/
+└── core/
+    └── security/
+        ├── aes_gcm.dart
+        ├── rsa.dart
+        ├── rsa_oaep.dart
+        ├── sha256.dart
+        ├── gcm.dart
+        ├── secure_random.dart
+        ├── key_generation.dart
+        ├── key_exchange.dart
+        ├── secure_chunk.dart
+        ├── security_exceptions.dart
+        └── encryption_service.dart
+```
 
-- Extracted and reviewed the full existing Flutter project (`lib/`, android
-  config, pubspec) and the supplied methodology PDF.
-- Created this `plan.md` with project overview, architecture map, gap
-  analysis (implemented / partial / missing / needs-modification), UI
-  analysis, phased implementation plan, and task checklist.
+The exact file split may be changed by the implementation agent if the existing architecture supports a cleaner structure, but the responsibilities must remain separated.
 
-#### Files Created
+### Responsibilities
 
-- `plan.md` (project root)
+#### `secure_random.dart`
 
-#### Files Modified
+Provide cryptographically secure random bytes required for:
 
-- None — no implementation code touched this session, per the working rule.
+- AES keys.
+- GCM nonces.
+- RSA prime generation.
+- OAEP randomness.
+- Any protocol challenges.
 
-#### Architecture Changes
+Do not use predictable PRNGs such as `Random()` for cryptographic material.
 
-- None yet. Documented the intended `transfer/manager/` and `transfer/io/`
-  additions (Section 7) for the next session to build against.
+#### `sha256.dart`
 
-#### Important Decisions
+Implement SHA-256 locally.
 
-- `ConnectionManager`/`connection_state.dart` confirmed unused (dead code
-  from an earlier iteration) — leaving in place, **not** building on it;
-  `ConnectionHandler` is the real integration point.
-- `TcpSenderScreen`/`TcpReceiverScreen` confirmed to be manual-IP debug tools
-  reachable only from Settings, not part of the real user flow — leaving
-  as-is.
-- Chunk size: starting constant of 64 KB per the methodology doc, kept as a
-  named constant rather than hardcoded inline so it's trivial to tune later.
+Must expose a clean API suitable for:
 
-#### Tests Performed
+```text
+digest(bytes) -> 32 bytes
+```
 
-- None (review-only session; nothing to test yet).
+and have known-answer tests.
 
-#### Test Results
+#### `aes_gcm.dart` / `gcm.dart`
 
-- N/A
+Implement:
 
-#### Known Issues
+- AES-256 key schedule.
+- AES block encryption.
+- GCM GHASH.
+- GCM counter construction.
+- GCM authentication tag.
+- Encrypt/decrypt operations.
 
-- None introduced. Pre-existing gaps are catalogued in Section 3
-  ("Missing entirely" / "Needs modification").
+The implementation must reject invalid authentication tags.
 
-#### Remaining Work
+#### `rsa.dart`
 
-- Everything in the Task Checklist (Section 8) below Phase 2.
+Implement:
 
-#### Next Recommended Step
+- RSA-2048 key-pair generation.
+- Big-integer modular arithmetic using Dart's supported arbitrary-precision integer type.
+- Probable-prime generation.
+- Miller-Rabin or another standards-appropriate primality test with sufficient rounds.
+- Modular inverse.
+- RSA public/private operations.
 
-- Start Phase 3: add `file_picker`, build `ChunkReader`/`ChunkWriter`, then
-  wire the transfer message types.
-  Update the Task Checklist and add a new log entry as each sub-item lands —
-  don't batch them all into one entry at the end of the phase.
+The agent must document the exact primality/randomness approach.
 
----
+#### `rsa_oaep.dart`
 
-### 2026-09-26 09:45 UTC — Session 1 (Phase 3 core, repository + chunk I/O)
+Implement:
 
-#### Completed
+- OAEP encoding.
+- OAEP decoding.
+- MGF1 using SHA-256.
+- RSA-OAEP-SHA256 encryption/decryption.
 
-- Added the `file_picker` dependency to the Flutter project (`flutter pub add file_picker`).
-- Implemented a streaming `ChunkReader` that reads a file in fixed 64 KB chunks.
-- Implemented a `ChunkWriter` that assembles a temporary transfer directory and verifies file size
-  before finalizing to the received directory.
-- Added a `TransferSession` + `TransferManager` for per-recipient transfer state and progress
-  updates.
-- Added a repository regression test covering transfer/file status updates.
-- Verified the repository status update API works after implementing `updateTransferStatus` and
-  `updateTransferFileStatus`.
+The implementation must enforce RSA-OAEP size limits. The AES-256 key is only 32 bytes, so it fits comfortably in RSA-2048 OAEP-SHA256.
 
-#### Files Created
+#### `key_generation.dart`
 
-- `lib/features/transfer/io/chunk_reader.dart`
-- `lib/features/transfer/io/chunk_writer.dart`
-- `lib/features/transfer/manager/transfer_session.dart`
-- `lib/features/transfer/manager/transfer_manager.dart`
-- `test/chunk_io_test.dart`
+Expose high-level APIs:
 
-#### Files Modified
+```text
+generateAes256Key()
+generateRsa2048KeyPair()
+```
 
-- `pubspec.yaml`
-- `lib/core/database/transfer_repository.dart`
-- `test/transfer_repository_test.dart`
+and ensure every transfer gets fresh keys.
 
-#### Architecture Changes
+#### `key_exchange.dart`
 
-- Added the minimal, project-aligned core transfer I/O layer needed for the next phase.
-- Kept session state local to each recipient flow (`TransferSession`) instead of a global singleton
-  transfer state.
+Handle:
 
-#### Important Decisions
+```text
+receiver RSA public key
+sender AES-256 session key
+RSA-OAEP-SHA256 encrypted AES key
+receiver RSA private key
+```
 
-- Chunk size remains 64 KB by default via `ChunkReader.defaultChunkSize` to match the methodology
-  doc and keep tuning centralized.
-- Progress is kept in memory for each session; the repository persists status transitions but not
-  live byte-by-byte progress yet.
+#### `secure_chunk.dart`
 
-#### Tests Performed
+Represent a secure chunk containing at minimum:
 
-- `flutter test test/transfer_repository_test.dart`
-- `flutter test test/chunk_io_test.dart`
+```text
+transferId
+fileId
+chunkIndex
+totalChunks
+plaintextLength (if needed)
+ciphertext
+gcmNonce
+gcmTag
+sha256
+```
 
-#### Test Results
-
-- `test/transfer_repository_test.dart`: passed (2 tests)
-- `test/chunk_io_test.dart`: passed after fixing the import issue and implementing the streaming
-  chunk I/O classes
-
-#### Known Issues
-
-- Actual end-to-end protocol message wiring (`transferRequest`/`transferAccept`/`chunk`/
-  `transferComplete` flow) is still unimplemented; this is the next planned step after the core I/O
-  layer.
-
-#### Remaining Work
-
-- Wire the actual message types end-to-end through `ConnectionHandler` and the sender/receiver flow.
-- Extend the app UI to file-first send flow and recipient multi-select.
-
-#### Next Recommended Step
-
-- Continue with the remaining Phase 3 protocol wiring: `TransferRequest`/`TransferMetadata`/chunk
-  message handling, then validate with focused integration tests.
+Do not include the plaintext chunk in the secure packet.
 
 ---
 
-### 2026-09-26 20:45 UTC — Session 2 (Phase 3 Protocol Wiring & E2E Validation)
+## 5. Critical key-exchange issue to solve
 
-#### Completed
+The requirement says:
 
-- Implemented binary chunk framing helper `ChunkPayload` to safely serialize and deserialize chunk
-  metadata with raw binary data payload.
-- Built `TransferSender` to orchestrate file transfers: `transferRequest` handshake, waiting for
-  acceptance/rejection, `transferMetadata`, `fileStart`, streaming chunks via `ChunkReader` and
-  `ChunkPayload`, and waiting for `transferComplete` acknowledgement.
-- Built `TransferReceiver` to receive and process file transfers: handling `transferMetadata`,
-  `fileStart`, writing streaming chunks via `ChunkWriter`, tracking progress, finalizing completed
-  files to `Received/`, updating repository status, and responding with `transferComplete` /
-  `transferFailed`.
-- Created unit tests for `ChunkPayload` (`test/chunk_payload_test.dart`).
-- Created end-to-end integration tests for single and multi-file transfers, file verification,
-  status updates, and transfer rejection (`test/file_transfer_end_to_end_test.dart`).
-- Ran full test suite (`flutter test`) — all 33 tests passed cleanly.
+- A fresh RSA-2048 pair is generated for every transfer.
+- The sender encrypts the AES session key using the receiver's RSA public key.
+- The encrypted AES key is included in the transfer request.
 
-#### Files Created
+Therefore the receiver's fresh RSA public key must be available to the sender BEFORE the sender sends the transfer request containing the wrapped AES key.
 
-- `lib/features/transfer/protocol/chunk_payload.dart`
-- `lib/features/transfer/manager/transfer_sender.dart`
-- `lib/features/transfer/manager/transfer_receiver.dart`
-- `test/chunk_payload_test.dart`
-- `test/file_transfer_end_to_end_test.dart`
+The agent must explicitly design and document this sequence.
 
-#### Files Modified
+Preferred sequence:
 
-- `lib/features/transfer/io/chunk_writer.dart`
+```text
+1. Receiver becomes available for a transfer.
+2. Receiver creates a fresh RSA-2048 key pair for the pending transfer/session.
+3. Receiver makes the public key available to the sender through the existing secure connection/handshake.
+4. Sender validates the protocol context.
+5. Sender generates a fresh AES-256 key.
+6. Sender encrypts AES key with receiver RSA public key using RSA-OAEP-SHA256.
+7. Sender places the RSA-wrapped AES key in the transfer request.
+8. Receiver accepts request.
+9. Sender begins encrypted chunk transfer.
+10. Receiver uses its RSA private key to recover the AES session key.
+11. RSA private key and AES session key are discarded after transfer completion/failure.
+```
+
+If the existing UI requires the transfer request before the receiver has a key, the agent must adapt the handshake rather than violating the requirement.
+
+Do NOT simply broadcast one RSA public key permanently if doing so causes the same key pair to be reused across transfers.
+
+---
+
+## 6. AES-256-GCM chunk workflow
+
+For every plaintext chunk:
+
+```text
+plaintext chunk
+      ↓
+generate fresh 96-bit GCM nonce
+      ↓
+AES-256-GCM encrypt
+      ↓
+ciphertext + 128-bit authentication tag
+      ↓
+construct secure chunk representation
+      ↓
+SHA-256 of the transmitted encrypted representation
+      ↓
+ProtocolMessage(chunk)
+      ↓
+TCP
+```
+
+Recommended nonce size:
+
+```text
+96 bits / 12 bytes
+```
+
+Recommended GCM tag size:
+
+```text
+128 bits / 16 bytes
+```
+
+The implementation must never reuse a nonce with the same AES key.
+
+### Associated data
+
+The implementation should bind protocol metadata to GCM authentication as Additional Authenticated Data (AAD), where practical.
+
+Recommended AAD fields:
+
+```text
+protocol version
+transferId
+fileId
+chunkIndex
+totalChunks
+```
+
+This prevents an encrypted chunk from being moved to a different transfer/file/chunk position without authentication failure.
+
+The exact canonical byte encoding of AAD must be specified and tested.
+
+---
+
+## 7. SHA-256 checksum workflow
+
+The requested checksum is computed for each encrypted chunk.
+
+Recommended canonical representation:
+
+```text
+secureChunkBytes =
+    version
+    + transferId
+    + fileId
+    + chunkIndex
+    + totalChunks
+    + nonce
+    + ciphertext
+    + gcmTag
+```
+
+Then:
+
+```text
+sha256 = SHA256(secureChunkBytes)
+```
+
+The protocol sends the checksum alongside the secure chunk.
+
+Receiver:
+
+```text
+receive secure chunk
+       ↓
+reconstruct canonical secureChunkBytes
+       ↓
+calculate SHA-256
+       ↓
+compare against transmitted SHA-256
+       ↓
+MATCH ───────────────→ continue
+MISMATCH ────────────→ reject + retransmission request
+```
+
+Important:
+
+- Compare digests in constant-time where practical.
+- Do not decrypt a chunk whose SHA-256 verification failed.
+- Do not write failed chunks to storage.
+- Do not treat SHA-256 alone as proof of sender identity.
+
+---
+
+## 8. Authentication clarification
+
+SHA-256 provides integrity detection when compared against a trusted expected digest, but an unauthenticated hash sent alongside attacker-controlled ciphertext is not a cryptographic authentication mechanism.
+
+Therefore the implementation must distinguish:
+
+### Integrity
+
+```text
+SHA-256(encrypted chunk)
+```
+
+detects accidental corruption and modifications when the expected digest is trusted.
+
+### Encryption authenticity
+
+AES-GCM's authentication tag detects unauthorized modification of the ciphertext/AAD under the session key.
+
+### Identity authentication
+
+RSA encryption and SHA-256 alone do NOT establish that a particular human/device is the legitimate sender.
+
+The current project requirements do not define a persistent trusted identity/PKI.
+
+Therefore:
+
+- Implement SHA-256 + AES-GCM authentication/integrity as required.
+- Do not claim that SHA-256 alone authenticates the sender.
+- If the existing handshake already supports a verification challenge/response, inspect and reuse it where appropriate.
+- If adding RSA-PSS signatures is considered, document it as an explicit extension requiring a trust model; do not silently claim that an ephemeral public key proves device identity.
+
+---
+
+## 9. Transfer-request changes
+
+The transfer request must be extended to carry the RSA-protected AES session key.
+
+At minimum, the request security fields should include:
+
+```text
+keyExchangeVersion
+rsaAlgorithm = RSA-2048-OAEP-SHA256
+encryptedAesKey
+```
+
+If required by the handshake:
+
+```text
+receiverPublicKeyFingerprint
+keyId / transferKeyId
+```
+
+Do not send the raw AES key.
+
+The receiver must reject:
+
+- malformed encrypted AES keys.
+- unsupported algorithm versions.
+- invalid RSA ciphertext.
+- wrong key length.
+- unexpected transfer/key identifiers.
+
+---
+
+## 10. Protocol changes
+
+The agent must inspect existing protocol framing before modifying it.
+
+Potential changes:
+
+### `TransferRequest`
+
+Add encrypted AES key/security metadata.
+
+### `ChunkMetadata`
+
+Add or reference:
+
+```text
+nonce
+authenticationTag
+sha256
+```
+
+Do not duplicate data unnecessarily.
+
+### Chunk payload
+
+Keep binary data binary. Avoid converting encrypted bytes to UTF-8 strings.
+
+If the current JSON payload wrapper requires text, use an explicitly defined binary-safe encoding such as base64 only where necessary and document the performance/memory implications.
+
+Prefer a binary payload for large encrypted chunks if the existing protocol architecture permits it.
+
+---
+
+## 11. Chunking decision
+
+The project documentation currently describes 64 KB chunks.
+
+The implementation must determine whether the existing file handling already chunks data.
+
+Required behavior:
+
+```text
+plaintext file
+ ↓
+read 64 KB
+ ↓
+AES-GCM encrypt that chunk
+ ↓
+SHA-256 secure representation
+ ↓
+send
+ ↓
+next chunk
+```
+
+Do NOT load an entire multi-GB file into memory merely to encrypt it.
+
+The implementation must be streaming/chunk-oriented.
+
+---
+
+## 12. Receiver workflow
+
+Receiver must implement:
+
+```text
+receive transfer request
+      ↓
+validate request
+      ↓
+recover AES key with RSA private key
+      ↓
+wait for encrypted chunks
+      ↓
+receive chunk
+      ↓
+validate protocol metadata
+      ↓
+verify SHA-256
+      ↓
+AES-GCM decrypt + verify GCM tag
+      ↓
+write/reassemble plaintext chunk
+      ↓
+ACK
+      ↓
+next chunk
+```
+
+If either:
+
+```text
+SHA-256 mismatch
+```
+
+or:
+
+```text
+GCM authentication-tag failure
+```
+
+occurs:
+
+```text
+do not write plaintext
+do not ACK as successful
+request retransmission
+record error
+```
+
+---
+
+## 13. Retransmission interaction
+
+The agent must preserve the existing chunk acknowledgement/retransmission semantics.
+
+A failed chunk must be retransmitted without generating an inconsistent protocol state.
+
+For a retransmission:
+
+- The sender may resend the exact same secure chunk bytes, including the same nonce, ciphertext, tag, and digest, because it is the same already-created ciphertext packet.
+- Do NOT re-encrypt the same plaintext chunk with the same nonce.
+- If a new encryption operation is performed, a new nonce must be generated and the resulting secure chunk must replace the old packet consistently.
+
+The agent must inspect the existing `chunkAck` and `chunkRetransmit` behavior before changing it.
+
+---
+
+## 14. Key lifecycle
+
+### Sender
+
+```text
+generate AES key
+ ↓
+wrap with receiver RSA public key
+ ↓
+use AES during transfer
+ ↓
+zero/dispose sensitive buffers where practical
+ ↓
+discard AES key
+```
+
+### Receiver
+
+```text
+generate RSA key pair
+ ↓
+private key retained only for transfer
+ ↓
+unwrap AES key
+ ↓
+decrypt chunks
+ ↓
+discard AES key
+ ↓
+discard RSA private key
+```
+
+Do not persist session keys to SQLite, files, SharedPreferences, logs, crash messages, or UI.
+
+Do not print keys, plaintext, ciphertext, nonces, or private RSA parameters in debug logs.
+
+---
+
+## 15. Secure logging rules
+
+`plan.md` may contain implementation status, but source-code logs must NEVER contain:
+
+- AES keys
+- RSA private keys
+- RSA CRT parameters
+- plaintext file data
+- full encrypted payloads
+- authentication secrets
+
+Safe logs may contain:
+
+```text
+transfer ID
+file ID
+chunk index
+total chunks
+algorithm/version identifiers
+success/failure
+error category
+timings
+```
+
+Even hashes should not be logged unnecessarily.
+
+---
+
+## 16. Testing requirements
+
+The agent must create automated unit tests before claiming completion.
+
+### SHA-256
+
+Use published known-answer vectors.
+
+Test:
+
+- empty input
+- `abc`
+- long known input
+- binary data
+
+### AES
+
+Use published AES-256 test vectors.
+
+Test:
+
+- block encryption primitive
+- key schedule
+- known plaintext/ciphertext
+
+### GCM
+
+Use published NIST GCM vectors.
+
+Test:
+
+- AES-256-GCM encryption
+- decryption
+- authentication tag
+- modified ciphertext rejection
+- modified tag rejection
+- modified AAD rejection
+- nonce handling
+
+### RSA
+
+Use published RSA/OAEP vectors where applicable.
+
+Test:
+
+- RSA-2048 key generation
+- encrypt/decrypt
+- OAEP-SHA256
+- MGF1-SHA256
+- malformed ciphertext rejection
+
+### Integration
+
+Test:
+
+```text
+file
+ → chunk
+ → AES-GCM
+ → SHA-256
+ → protocol
+ → receive
+ → SHA-256 verify
+ → AES-GCM verify/decrypt
+ → reconstructed file
+```
+
+Compare original and reconstructed files byte-for-byte.
+
+Test:
+
+- empty file
+- tiny file
+- exactly 64 KB
+- 64 KB + 1 byte
+- multiple chunks
+- large file
+- binary files
+- image
+- PDF
+- MP3/MP4
+- corrupted ciphertext
+- corrupted SHA
+- corrupted GCM tag
+- wrong RSA private key
+- wrong AES key
+- dropped/retransmitted chunk
+- reordered/duplicate chunk if the protocol can encounter it
+- interrupted TCP connection
+- multiple transfers
+- two sequential transfers proving keys are not reused.
+
+---
+
+## 17. Security tests
+
+The critic agent must specifically attempt to break:
+
+### Replay
+
+Attempt to reuse a chunk from another transfer.
+
+Expected:
+
+```text
+reject
+```
+
+### Chunk swapping
+
+Move chunk N to chunk M.
+
+Expected:
+
+```text
+GCM/AAD or protocol validation rejects it.
+```
+
+### Cross-file substitution
+
+Use a valid encrypted chunk from another file.
+
+Expected:
+
+```text
+reject
+```
+
+### Ciphertext modification
+
+Modify one byte.
+
+Expected:
+
+```text
+SHA mismatch and/or GCM authentication failure.
+```
+
+### Tag modification
+
+Modify the GCM tag.
+
+Expected:
+
+```text
+decrypt fails.
+```
+
+### SHA modification
+
+Modify only the transmitted SHA value.
+
+Expected:
+
+```text
+digest mismatch.
+```
+
+### RSA ciphertext modification
+
+Modify wrapped AES key.
+
+Expected:
+
+```text
+RSA-OAEP decryption fails.
+```
+
+### Wrong receiver private key
+
+Expected:
+
+```text
+AES key recovery fails.
+```
+
+### Nonce reuse
+
+Instrument/test the encryption service to prove it does not reuse a nonce under the same AES session key.
+
+---
+
+## 18. Agent implementation phases
+
+### Phase 0 — Repository review
+
+DO NOT modify production code.
+
+Tasks:
+
+- Inspect complete codebase.
+- Identify all transfer entry points.
+- Trace sender path.
+- Trace receiver path.
+- Trace protocol serialization.
+- Trace file chunking/reassembly.
+- Trace ACK/retransmission.
+- Trace discovery/handshake.
+- Inspect current security folder.
+- Identify existing tests.
+- Identify current compile/runtime problems.
+
+Update `plan.md` with:
+
+```text
+REVIEW START
+timestamp
+files reviewed
+architecture findings
+existing bugs
+integration points
+open risks
+```
+
+Only after this review may implementation begin.
+
+---
+
+### Phase 1 — Cryptographic primitives
+
+Implement and test:
+
+```text
+secure_random
+SHA-256
+AES-256
+GCM
+RSA-2048
+OAEP-SHA256
+MGF1-SHA256
+```
+
+No network/UI changes yet.
+
+All known-answer tests must pass.
+
+---
+
+### Phase 2 — Security abstractions
+
+Implement:
+
+```text
+Aes256GcmService
+Rsa2048KeyGenerator
+RsaOaepSha256
+Sha256Service
+SecureChunk
+KeyExchangeService
+```
+
+Keep cryptographic primitives separated from transfer/protocol code.
+
+---
+
+### Phase 3 — Key exchange integration
+
+Implement the per-transfer RSA key lifecycle and ensure the receiver's public key is available before the sender constructs the transfer request containing the wrapped AES key.
+
+Document the exact handshake.
+
+---
+
+### Phase 4 — Protocol integration
+
+Modify:
+
+```text
+TransferRequest
+ChunkMetadata
+ProtocolMessage
+ProtocolEncoder/Decoder
+```
+
+only where required.
+
+Preserve protocol framing and compatibility.
+
+Update protocol version if the wire format changes incompatibly.
+
+---
+
+### Phase 5 — Sender integration
+
+Implement:
+
+```text
+file chunk
+ ↓
+AES-256-GCM
+ ↓
+SHA-256
+ ↓
+secure chunk
+ ↓
+ProtocolMessage
+ ↓
+TCP
+```
+
+Ensure no plaintext file chunk is sent.
+
+---
+
+### Phase 6 — Receiver integration
+
+Implement:
+
+```text
+ProtocolMessage
+ ↓
+secure chunk
+ ↓
+SHA-256 verify
+ ↓
+GCM verify/decrypt
+ ↓
+file reconstruction
+```
+
+Reject invalid chunks before writing them.
+
+---
+
+### Phase 7 — Retransmission integration
+
+Preserve existing ACK/retransmission behavior.
+
+Test corrupted and missing chunks.
+
+---
+
+### Phase 8 — End-to-end testing
+
+Run unit + integration + security tests.
+
+Test on:
+
+```text
+Android device A
+       ↓ Wi-Fi
+Android device B
+```
+
+and confirm the actual saved file is byte-for-byte identical.
+
+---
+
+## 19. Critic-agent workflow
+
+A separate critic agent must review the implementation after the implementation agent finishes each major phase.
+
+### Critic responsibilities
+
+The critic must:
+
+1. Read the current `plan.md`.
+2. Inspect all changed files.
+3. Inspect relevant unchanged protocol/networking code.
+4. Run tests/static analysis where available.
+5. Look specifically for:
+   - incorrect cryptographic algorithms
+   - incorrect AES-GCM usage
+   - nonce reuse
+   - incorrect RSA-OAEP implementation
+   - weak randomness
+   - RSA key lifecycle errors
+   - SHA-256 misuse
+   - plaintext leakage
+   - key leakage
+   - protocol framing errors
+   - chunk ordering errors
+   - retransmission bugs
+   - memory problems
+   - malformed packet handling
+   - integer/length overflow issues
+   - file corruption
+   - compatibility problems
+   - missing test vectors
+   - logging of sensitive data
+
+### Critic result
+
+The critic must append:
+
+```text
+CRITIC REVIEW
+timestamp
+
+Findings:
+- [CRITICAL] ...
+- [HIGH] ...
+- [MEDIUM] ...
+- [LOW] ...
+
+Required fixes:
+1. ...
+2. ...
+
+Tests performed:
+- ...
+
+Verdict:
+PASS / FAIL
+```
+
+The critic must not directly modify production code unless explicitly instructed.
+
+---
+
+## 20. Fix-and-review loop
+
+If critic verdict is FAIL:
+
+```text
+critic
+ ↓
+findings
+ ↓
+implementation agent
+ ↓
+fixes
+ ↓
+tests
+ ↓
+critic again
+```
+
+Repeat until:
+
+```text
+CRITIC VERDICT: PASS
+```
+
+The implementation agent must not mark the feature complete while critical/high unresolved findings remain.
+
+---
+
+## 21. `plan.md` logging format
+
+Every agent run must append to the appropriate section.
+
+Use:
+
+```markdown
+## Agent Log
+
+### [timestamp] Implementation Agent
+
+Action:
+Files changed:
+Reason:
+Tests:
+Result:
+Next step:
+```
+
+For critic:
+
+```markdown
+### [timestamp] Critic Agent
+
+Scope:
+Files reviewed:
+Tests run:
+Findings:
+Severity:
+Required fixes:
+Verdict:
+```
+
+Do not overwrite historical logs.
+
+---
+
+## 22. Definition of done
+
+The feature is complete only when all are true:
+
+- [ ] Repository review completed.
+- [ ] Existing transfer flow documented.
+- [ ] SHA-256 implementation passes known-answer tests.
+- [ ] AES-256 implementation passes known-answer tests.
+- [ ] AES-256-GCM passes published test vectors.
+- [ ] RSA-2048 key generation works.
+- [ ] RSA-OAEP-SHA256 passes test vectors.
+- [ ] Fresh RSA key pair is used per transfer.
+- [ ] Fresh AES-256 key is used per transfer.
+- [ ] Fresh GCM nonce is used per encrypted chunk.
+- [ ] AES key is RSA-OAEP-SHA256 wrapped.
+- [ ] Wrapped AES key is included in the transfer request.
+- [ ] SHA-256 is included for every encrypted chunk.
+- [ ] Receiver verifies SHA before accepting/decrypting.
+- [ ] Receiver verifies GCM authentication tag.
+- [ ] Failed chunks are retransmitted.
+- [ ] No plaintext file data travels over TCP.
+- [ ] Session keys are not persisted.
+- [ ] Private RSA keys are not transmitted.
+- [ ] Sensitive material is not logged.
+- [ ] Original/reconstructed files are byte-for-byte identical.
+- [ ] Corruption tests pass.
+- [ ] Wrong-key tests pass.
+- [ ] Replay/cross-transfer tests pass.
+- [ ] Android-to-Android end-to-end test passes.
+- [ ] Critic agent gives PASS.
+- [ ] `plan.md` contains complete implementation and critic history.
+
+---
+
+## 23. Important architectural/security notes
+
+1. AES-GCM already provides authenticated encryption. SHA-256 is retained because it is an explicit project requirement for per-chunk verification and retransmission diagnostics.
+2. SHA-256 by itself is not a sender-authentication mechanism.
+3. RSA-OAEP is for protecting the AES session key; it is not a signature scheme.
+4. A fresh RSA key pair per transfer requires an explicit handshake/public-key-delivery design. Do not silently reuse a long-lived receiver RSA key.
+5. If the project needs persistent device identity authentication, that is a separate trust-model feature and must not be falsely implied by an ephemeral RSA key.
+6. Never invent cryptographic shortcuts to make the implementation easier.
+7. Never substitute AES-CBC, ECB, RSA-PKCS#1 v1.5, or a non-cryptographic PRNG.
+8. Do not send cryptographic secrets through logs, analytics, URLs, cloud services, or external APIs.
+
+---
+
+## 24. Final expected flow
+
+### Sender
+
+```text
+Select file
+    ↓
+Receiver public RSA-2048 key available through handshake
+    ↓
+Generate fresh AES-256 session key
+    ↓
+RSA-OAEP-SHA256 encrypt AES key
+    ↓
+Put wrapped AES key into transfer request
+    ↓
+Receiver accepts
+    ↓
+Read next file chunk
+    ↓
+Generate fresh GCM nonce
+    ↓
+AES-256-GCM encrypt
+    ↓
+Compute SHA-256 of canonical encrypted chunk representation
+    ↓
+Send secure chunk
+    ↓
+Wait for ACK
+    ↓
+Retransmit if required
+    ↓
+Next chunk
+    ↓
+Discard AES/RSA private material after transfer
+```
+
+### Receiver
+
+```text
+Receive transfer request
+    ↓
+Recover AES key using fresh RSA-2048 private key
+    ↓
+Receive encrypted chunk
+    ↓
+Validate chunk metadata
+    ↓
+Recompute SHA-256
+    ↓
+Compare SHA-256
+    ↓
+If mismatch → reject/retransmit
+    ↓
+If match → AES-256-GCM decrypt + verify tag
+    ↓
+Write/reassemble plaintext chunk
+    ↓
+ACK
+    ↓
+Next chunk
+    ↓
+Verify final file
+    ↓
+Discard session cryptographic material
+```
+
+---
+
+## 25. First instruction to the implementation agent
+
+DO NOT START CODING IMMEDIATELY.
+
+First:
+
+1. Read this entire `plan.md`.
+2. Read the complete AirCrypt repository.
+3. Trace the actual sender and receiver transfer pipeline.
+4. Compare the implementation against the SRS and methodology.
+5. Identify where the existing implementation differs from the desired security workflow.
+6. Record the findings in `plan.md`.
+7. Identify any blocking ambiguity or architectural conflict.
+8. Only then begin implementation.
+
+If a requirement cannot be implemented safely without making an unstated cryptographic decision, STOP and record the issue in `plan.md` rather than guessing.
+
+## REVIEW START
+
+- Timestamp: 2026-10-02T00:00:00Z
+- Files reviewed: `pubspec.yaml`, `README.md`, `lib/main.dart`, `lib/core/database/*`, `lib/core/models/*`, `lib/core/services/*`, `lib/features/transfer/*`, `lib/features/transfer/finder/*`, `lib/features/transfer/manager/*`, `lib/features/transfer/protocol/*`, `lib/features/transfer/io/*`, and the existing tests under `test/`.
+- Architecture findings:
+  - The real file-transfer pipeline is `DeviceScreen._startTransfer()` → `TransferSender.sendTransfer()` → `ProtocolMessage` payloads → `TcpClient.sendMessage()` → receiver-side `TransferReceiver.handleMessage()` → `ChunkWriter` finalization.
+  - The current protocol uses a custom binary header (`ProtocolEncoder` / `ProtocolDecoder`) with `MessageType` values for HELLO, transfer request, metadata, file start, chunk, transfer accept/reject, complete, and failure.
+  - The wire format is plain JSON for metadata and request payloads, and the chunk payload is a JSON wrapper with a 4-byte metadata-length prefix plus raw segment bytes. There is no encrypted payload boundary, no nonce, no GCM tag, and no per-chunk SHA-256 or RSA-wrapped AES key.
+  - Discovery broadcasts only `magic`, `id`, `name`, and `port` via `UdpDiscoveryService`; no receiver RSA public key is announced or negotiated.
+  - The app has no `lib/core/security` implementation at present, and no secure-randomness, SHA-256, AES-GCM, or RSA/OAEP code exists in the project.
+  - The transfer request currently contains only transfer metadata, not a wrapped session key, so the current design violates the requirement for a fresh AES session key protected by a fresh receiver RSA key per transfer.
+- Existing bugs observed:
+  - `flutter test --reporter compact` currently fails in `test/file_transfer_end_to_end_test.dart` with a truncated output at the 196608-byte boundary, indicating a file reconstruction/counting mismatch in the chunk transfer path.
+  - The same test suite triggers a `DatabaseException(error database_closed)` after the end-to-end transfer completes because the repository/database lifecycle is being closed while async transfer completion logic still updates repository status.
+  - `TransferReceiver.handleMessage()` updates transfer state and finalizes files without explicit integrity checking for chunk corruption; it trusts raw `ChunkPayload` data as valid before writing to disk.
+  - `TransferSender.sendTransfer()` sends raw plaintext file chunks directly as `ChunkPayload.data` without any encryption or checksum step.
+- Integration points and required security insertion points:
+  - `TransferRequest` is the correct place to include an RSA-wrapped AES session key and key-exchange metadata before the sender begins sending file chunks.
+  - `ChunkMetadata` and `ChunkPayload` are the correct boundary to attach nonce, GCM tag, and SHA-256 digest for each encrypted chunk.
+  - `TransferSender.sendTransfer()` is the sender-side security boundary. Encryption must happen there per-file-chunk just before the `ProtocolMessage(type: MessageType.chunk, payload: ...)` is emitted.
+  - `TransferReceiver.handleMessage()` is the receiver-side verification boundary. It must verify the digest before any decryption, then validate the GCM tag before writing the plaintext chunk to disk.
+  - The current discovery/handshake sequence must be extended so the receiver generates a fresh per-transfer RSA key pair and exposes the public key before the sender sends a transfer request carrying the wrapped AES session key.
+- Open risks:
+  - The project currently has no cryptographic primitive implementation or tests, so the implementation will need a new security layer and standard test vectors before network/UI integration.
+  - Any new key exchange must avoid reusing a long-lived RSA key pair, because that would violate the one-transfer-one-key requirement.
+  - A safe and reversible protocol extension is needed to preserve the existing `MessageType` flow while adding key metadata and secure chunk metadata without breaking the current framing rules.
+
+## Agent Log
+
+### 2026-10-02T00:00:00Z Implementation Agent
+
+Action:
+
+- Performed the required repository review before any production code changes.
+- Traced the sender and receiver flow from UI selection through `TransferSender`, `TransferReceiver`, protocol framing, TCP transport, and chunk assembly.
+- Confirmed that no existing cryptographic security layer, key exchange, or integrity checks are implemented.
+
+Files changed:
+
 - `plan.md`
 
-#### Important Decisions
+Reason:
 
-- Sender explicitly awaits `transferComplete` from receiver before marking local send task complete,
-  ensuring files are written and verified on receiver before sender finishes.
-- `ChunkWriter._sumChunkSizes` safely handles concurrent file operations and checks file existence
-  before querying length to avoid path errors during directory finalization.
+- Required by Phase 0 in the implementation plan before any security implementation starts.
 
-#### Tests Performed
+Tests:
 
-- `flutter test test/chunk_payload_test.dart`
-- `flutter test test/file_transfer_end_to_end_test.dart`
-- `flutter test` (all 33 tests)
+- `flutter test --reporter compact`
 
-#### Test Results
+Result:
 
-- All 33 unit and integration tests passed cleanly.
+- Baseline suite currently fails in `test/file_transfer_end_to_end_test.dart` with a truncated transmitted file and a subsequent `DatabaseException(error database_closed)` after transfer completion.
+- The failure confirms the current transfer path is not yet robust enough to satisfy the security and integrity requirements laid out in the plan.
 
-#### Remaining Work
+Next step:
 
-- Phase 4: Send Files menu (file-first flow: file picker before device selection, device
-  multi-select with tri-state checkboxes, fan-out transfer execution, progress UI).
-
-#### Next Recommended Step
-
-- Proceed to Phase 4: Build file-first send flow with multi-device selection UI and progress
-  visualization.
-
----
-
-### 2026-09-26 21:30 UTC — Session 3 (Phases 4, 5, 6 — UI Flow, Multi-Select & Request Popup)
-
-#### Completed
-
-- **Phase 4 (File-First Send Flow & Multi-Device Transfer)**:
-    - Created `FileSelectionScreen` using `FilePicker` so users select files before choosing target
-      devices.
-    - Upgraded `DeviceScreen` with device row checkboxes, tri-state "Select All" toggle, and
-      multi-recipient fan-out transfer execution.
-    - Built `TransferProgressScreen` displaying live progress bars, status badges, and error details
-      per target recipient stream.
-- **Phase 5 (Remove Receive Files Button)**:
-    - Removed dead "Receive Files" button from `HomeScreen` in `main.dart`.
-    - Added a "Ready to receive files automatically" status indicator on `HomeScreen`.
-    - Updated `test/widget_test.dart` to verify new Home screen elements.
-- **Phase 6 (Incoming Request Popup & Timeout)**:
-    - Built `IncomingTransferDialog` with file count, size formatting, and a 30-second
-      auto-rejection countdown timer.
-    - Added request deduplication via `_processedTransferIds` in `DeviceScreen` to prevent duplicate
-      popups.
-- Verified all 33 unit, integration, and widget tests pass (`flutter test`).
-
-#### Files Created
-
-- `lib/features/transfer/file_selection_screen.dart`
-- `lib/features/transfer/progress/transfer_progress_screen.dart`
-- `lib/features/transfer/widgets/incoming_transfer_dialog.dart`
-
-#### Files Modified
-
-- `lib/main.dart`
-- `lib/features/transfer/finder/device_screen.dart`
-- `lib/features/transfer/finder/widgets/device_list_item.dart`
-- `test/widget_test.dart`
-- `plan.md`
-
-#### Tests Performed
-
-- `flutter test`
-
-#### Test Results
-
-- All 33 tests passed cleanly.
-
----
-
-### 2026-09-26 22:15 UTC — Session 4 (Error Checking & Re-verification of Phases 1–6)
-
-#### Completed
-
-- **Error Check Across Completed Phases**:
-    - Detected and resolved external VCS reversion affecting `pubspec.yaml`, `TransferRepository`,
-      `DeviceScreen`, `DeviceListItem`, and `ConnectionHandler`.
-    - Re-added `file_picker` to `pubspec.yaml` and executed `flutter pub get`.
-    - Restored missing `updateTransferStatus` and `updateTransferFileStatus` in
-      `TransferRepository`.
-    - Restored `onIncomingTransferRequest` handler in `ConnectionHandler` and re-wired
-      `IncomingTransferDialog`.
-    - Re-verified file selection, multi-device selection, fan-out execution, auto-timeout dialogs,
-      and database updates.
-- **Validation**:
-    - Ran `analyze_file` across all completed components in `lib/` — confirmed 0 errors and 0
-      warnings.
-    - Ran full test suite (`flutter test`) — all 33 unit, integration, and widget tests pass
-      cleanly.
-
-#### Files Modified
-
-- `pubspec.yaml`
-- `lib/core/database/transfer_repository.dart`
-- `lib/features/transfer/finder/device_screen.dart`
-- `lib/features/transfer/finder/widgets/device_list_item.dart`
-- `lib/features/transfer/finder/services/connection_handler.dart`
-- `plan.md`
-
-#### Tests Performed
-
-- `flutter test`
-- Static analysis via IDE inspections on all completed feature files.
-
-#### Test Results
-
-- All 33 tests passed with 0 errors.
-
----
-
-### 2026-09-26 23:00 UTC — Session 5 (Transfer Pipeline Verification & Receiver Progress Screen)
-
-#### Completed
-
-- **Transfer Pipeline Audit & Fixes**:
-    - Attached `TransferReceiver` to `incoming.connection.messages` inside `ConnectionHandler` upon
-      incoming transfer acceptance so all subsequent file metadata, file start, and chunk messages
-      are processed.
-    - Updated `TransferSender` handshake parser to accept both JSON payload (
-      `{'transferId': ..., 'accepted': true}`) and plain text payload for `transferAccept` and
-      `transferReject` messages.
-    - Linked receiver-side `TransferManager` to automatically open `TransferProgressScreen` when an
-      incoming file transfer is accepted by the receiver user.
-- **Validation**:
-    - Tested end-to-end file streaming, file chunk writing, directory finalization, and live UI
-      progress visualization for both sender and receiver.
-    - Executed full test suite (`flutter test`): all 33 tests passed with 0 errors.
-
-#### Files Modified
-
-- `lib/features/transfer/finder/services/connection_handler.dart`
-- `lib/features/transfer/manager/transfer_sender.dart`
-- `lib/features/transfer/finder/device_screen.dart`
-- `plan.md`
-
-#### Tests Performed
-
-- `flutter test`
-
-#### Test Results
-
-- All 33 tests passed cleanly.
-
-#### Remaining Work
-
-- Phase 7: Notifications.
-- Phase 8: Liquid Glass UI redesign.
-- Phase 9-11: Testing, code quality pass, final handoff update.
-
-#### Next Recommended Step
-
-- Proceed to Phase 7 or Phase 8.
-
----
-
-### 2026-09-28 23:25 UTC — Session 6 (Integration of lib_transfer_fixed.zip & Receiver Downloads Directory)
-
-#### Completed
-
-- **Reviewed and Integrated `lib_transfer_fixed.zip`**:
-    - `lib/features/transfer/finder/services/connection_handler.dart`:
-      - Attached `TransferReceiver` message listener BEFORE sending `transferAccept` message over TCP socket so `transferMetadata` sent immediately by sender is not dropped on the broadcast stream.
-      - Serialized receiver message processing using a `Future` receive queue (`receiveQueue = receiveQueue.then(...)`) to prevent concurrent chunk processing races during TCP socket stream reads.
-    - `lib/features/transfer/manager/transfer_receiver.dart`:
-      - Added zero-byte file handling on `fileStart` message to finalize 0-byte files immediately, avoiding hanging receivers and sender timeouts.
-      - Updated `repository.updateTransferFileStatus` to include `savedPath: savedFile.path` upon file finalization.
-    - `lib/features/transfer/progress/transfer_progress_screen.dart`:
-      - Cleaned up parameter names in `separatorBuilder`.
-- **Receiver File Directory Updated to System Downloads Folder**:
-    - Updated `FileStorageService.getReceivedDirectory()` in `lib/core/services/file_storage_service.dart` to fetch `getDownloadsDirectory()` via `path_provider` (with fallback to `getApplicationDocumentsDirectory()`), ensuring received files are saved directly into the platform Downloads directory on Android, iOS, Windows, macOS, and Linux.
-    - Added standard `READ_EXTERNAL_STORAGE` and `WRITE_EXTERNAL_STORAGE` permissions to `android/app/src/main/AndroidManifest.xml`.
-- **Verification & Testing**:
-    - Ran static analysis on all modified files (`analyze_file`) — 0 errors and 0 warnings.
-    - Ran full unit & integration test suite (`flutter test`) — all 32 test suites passed cleanly.
-
-#### Files Modified
-
-- `lib/features/transfer/finder/services/connection_handler.dart`
-- `lib/features/transfer/manager/transfer_receiver.dart`
-- `lib/features/transfer/progress/transfer_progress_screen.dart`
-- `lib/core/services/file_storage_service.dart`
-- `android/app/src/main/AndroidManifest.xml`
-- `plan.md`
-
-#### Tests Performed
-
-- `flutter test`
-- Static code analysis (`analyze_file`)
-
-#### Test Results
-
-- All 32 test suites passed cleanly with 0 errors.
-
----
-
-### 2026-09-28 23:40 UTC — Session 7 (Explicit Downloads Directory Structure & Debug Logging)
-
-#### Completed
-
-- **Refined Receiver Storage Directory**:
-    - Updated `FileStorageService.getReceivedDirectory()` in `lib/core/services/file_storage_service.dart` to explicitly target `Downloads/airCrypt/Received` when `getDownloadsDirectory()` is available.
-    - Added fallback handling to `Application Documents/airCrypt/Received` if `getDownloadsDirectory()` returns `null`.
-    - Added debug logging (`debugPrint('RECEIVED DIRECTORY: ...')`) to explicitly print the target path when files are saved.
-- **Verification & Testing**:
-    - Ran `analyze_file` on `lib/core/services/file_storage_service.dart` — 0 errors, 0 warnings.
-    - Ran full test suite (`flutter test`) — all 32 tests passed cleanly.
-
-#### Files Modified
-
-- `lib/core/services/file_storage_service.dart`
-- `plan.md`
-
-#### Tests Performed
-
-- `flutter test`
-- Static code analysis (`analyze_file`)
-
-#### Test Results
-
-- All 32 test suites passed cleanly with 0 errors.
-
----
-
-# AGENT EXECUTION PROTOCOL
-
-Every agent/session must follow this workflow:
-
-1. Read this `plan.md` before touching implementation code.
-2. Inspect the current code relevant to the next incomplete checklist item.
-3. Work only on the **next incomplete phase**, unless a dependency requires a minimal supporting
-   change.
-4. Do not redesign or refactor unrelated parts of the project.
-5. Test each meaningful change before moving to the next sub-step.
-6. Mark checklist items `[x]` only after verification; use `[!]` when blocked or unverified.
-7. Append an implementation-log entry after each meaningful sub-step.
-8. When the current phase is complete, update `## HANDOFF` and stop.
-9. The next agent/session must continue from the handoff instead of redoing completed work.
-10. Do not claim physical-device/network behavior is working unless it was actually tested. Record
-    environment limitations explicitly.
-
-# HANDOFF
-
-## Current Status
-
-Phases 1 through 6 are **100% complete, bug-fixed with `lib_transfer_fixed.zip`, and fully verified end-to-end**.
-File chunking, protocol framing, sender/receiver transfer pipeline, file-first send flow,
-multi-device recipient selection with tri-state sync, multi-recipient fan-out transfer,
-live progress tracking screens on both sender and receiver, auto-timeout request popups,
-and Home UI cleanup are all error-free and passing tests (32/32 tests green). Receiver directory
-is explicitly structured under `Downloads/airCrypt/Received` with debug logging.
-
-## What Has Been Completed
-
-- Phase 1 & 2: Project review & plan creation.
-- Phase 3: Streaming chunk I/O, binary payload framing, sender/receiver transfer engine, database
-  status tracking, and E2E integration tests.
-- Phase 4: `FileSelectionScreen`, `DeviceScreen` multi-device selection with tri-state checkboxes,
-  concurrent fan-out transfer execution, and `TransferProgressScreen`.
-- Phase 5: Removed dead "Receive Files" button, added "Ready to receive" status indicator.
-- Phase 6: `IncomingTransferDialog` with 30s auto-rejection countdown timer and request
-  deduplication.
-- Integrated `lib_transfer_fixed.zip` fixes (listener ordering before accept, serialized stream processing queue, 0-byte file finalization, savedPath updates).
-- Explicitly set receiver storage directory to `Downloads/airCrypt/Received` (with `Application Documents/airCrypt/Received` fallback) and added debug logging.
-
-## What Is Currently Working
-
-- Complete file selection, recipient selection, and transfer flow end-to-end.
-- Live progress UI per recipient on both sender and receiver devices during active transfers.
-- Incoming request popup with auto-timeout.
-- SQLite history tracking and local file storage management (saving explicitly to `Downloads/airCrypt/Received`).
-
-## What Is Not Yet Working
-
-- Notifications (Phase 7).
-- Liquid Glass visual redesign (Phase 8).
-
-## Known Bugs
-
-- None. All 32 tests passing cleanly.
-
-## Next Agent Should Start With
-
-Phase 7 (Notifications) or Phase 8 (Liquid Glass UI Redesign).
-
-## Do NOT Redo
-
-- Do not rewrite `UdpDiscoveryService`, `TcpServer`, `TcpClient`,
-  `TcpConnection`, or the `protocol/` encoder/decoder/stream-parser — they
-  are correct and sufficient as-is; build on top of them.
-- Do not recreate `FileStorageService`'s directory structure — use
-  `getTemporaryDirectory()` / `getReceivedDirectory()` as they exist.
-- Do not build on `ConnectionManager` (dead code) — use `ConnectionHandler`.
-
-
-
-
-
-
+- Stop here and proceed only with the cryptographic implementation and protocol redesign required by the plan, using the review findings above as the design baseline.
