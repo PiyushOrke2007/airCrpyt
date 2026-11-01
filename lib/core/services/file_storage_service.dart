@@ -81,6 +81,18 @@ class FileStorageService implements FileStorage {
     return directory;
   }
 
+  Future<File> _safeMoveFile(File sourceFile, String destinationPath) async {
+    try {
+      return await sourceFile.rename(destinationPath);
+    } on FileSystemException {
+      final copiedFile = await sourceFile.copy(destinationPath);
+      try {
+        await sourceFile.delete();
+      } catch (_) {}
+      return copiedFile;
+    }
+  }
+
   @override
   Future<File> moveToTrash(File file) async {
     final trashDirectory = await getTrashDirectory();
@@ -90,7 +102,7 @@ class FileStorageService implements FileStorage {
       path.basename(file.path),
     );
 
-    return file.rename(destination);
+    return _safeMoveFile(file, destination);
   }
 
   @override
@@ -99,7 +111,7 @@ class FileStorageService implements FileStorage {
 
     await destinationParent.create(recursive: true);
 
-    return file.rename(originalPath);
+    return _safeMoveFile(file, originalPath);
   }
 
   @override

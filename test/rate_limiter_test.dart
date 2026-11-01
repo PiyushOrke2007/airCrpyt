@@ -9,6 +9,7 @@ void main() {
       deviceName: 'Device A',
       fileCount: 1,
       totalBytes: 500 * 1024 * 1024, // 500 MB
+      createdAt: DateTime.now().subtract(const Duration(seconds: 10)),
     );
 
     expect(session.isExceedingTimeLimit, isFalse);
@@ -32,6 +33,7 @@ void main() {
       deviceName: 'Device B',
       fileCount: 1,
       totalBytes: 50 * 1024 * 1024, // 50 MB
+      createdAt: DateTime.now().subtract(const Duration(seconds: 10)),
     );
 
     // Simulate 5 MB/s transfer speed (takes 10 seconds < 60s)

@@ -102,6 +102,7 @@ class TransferSession {
   static const int maxAllowedTransferSeconds = 60; // 1 minute
 
   bool get isExceedingTimeLimit {
+    if (DateTime.now().difference(createdAt).inSeconds < 3) return false;
     final sec = estimatedSecondsRemaining;
     return sec != null && sec > maxAllowedTransferSeconds;
   }

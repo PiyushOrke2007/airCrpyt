@@ -22,6 +22,18 @@ class TrashService {
         _repository = repository ?? TrashRepository(),
         _uuid = uuid ?? const Uuid();
 
+  Future<File> _safeMoveFile(File sourceFile, String destinationPath) async {
+    try {
+      return await sourceFile.rename(destinationPath);
+    } on FileSystemException {
+      final copiedFile = await sourceFile.copy(destinationPath);
+      try {
+        await sourceFile.delete();
+      } catch (_) {}
+      return copiedFile;
+    }
+  }
+
   Future<TrashItem> moveToTrash({
     required String fileId,
     required String filePath,
@@ -49,7 +61,7 @@ class TrashService {
       trashFileName,
     );
 
-    final movedFile = await file.rename(targetPath);
+    final movedFile = await _safeMoveFile(file, targetPath);
 
     final deletedAt = DateTime.now();
 
@@ -61,7 +73,7 @@ class TrashService {
       deletedAt: deletedAt,
       permanentDeleteAt:
       deletedAt.add(
-        const Duration(days: 60),
+        const Duration(days: 20),
       ),
     );
 

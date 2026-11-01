@@ -29,6 +29,9 @@ class _TrashScreenState extends State<TrashScreen> {
 
   Future<void> _loadTrash() async {
     try {
+      // Auto-delete items older than 20 days
+      await _trashService.cleanupExpiredItems();
+
       final items = await _repository.getAllTrashItems();
       if (!mounted) return;
       setState(() {
@@ -54,9 +57,9 @@ class _TrashScreenState extends State<TrashScreen> {
     try {
       await _trashService.restore(item);
       await _loadTrash();
-      if (mounted) _showMessage('RESTORED: ${_fileName(item)}');
+      if (mounted) _showMessage('RECOVERED: ${_fileName(item)}');
     } catch (error) {
-      if (mounted) _showMessage('RESTORE FAILED: $error');
+      if (mounted) _showMessage('RECOVER FAILED: $error');
     }
   }
 
@@ -66,7 +69,7 @@ class _TrashScreenState extends State<TrashScreen> {
       builder: (context) => AlertDialog(
         title: const Text('PERMANENT DELETE?'),
         content: Text(
-          '${_fileName(item)} will be removed and cannot be restored.',
+          '${_fileName(item)} will be removed permanently and cannot be restored.',
         ),
         actions: [
           TextButton(
@@ -121,7 +124,7 @@ class _TrashScreenState extends State<TrashScreen> {
             ? const EmptyStateView(
                 icon: Icons.delete_outline,
                 title: 'TRASH IS EMPTY',
-                message: 'Deleted files stay here temporarily before removal.',
+                message: 'Items in trash are automatically deleted after 20 days.',
               )
             : ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
@@ -145,7 +148,15 @@ class _TrashScreenState extends State<TrashScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Items stay in trash for 20 days before automatic deletion.',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: AirCryptColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   for (final item in _items)
                     CyberCard(
                       margin: const EdgeInsets.only(bottom: 10),
@@ -163,18 +174,19 @@ class _TrashScreenState extends State<TrashScreen> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 6),
                               CyberBadge(
                                 label: '${_remainingDays(item)}D LEFT',
                                 color: AirCryptColors.textPrimary,
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           Text(
                             'DELETED: ${MaterialLocalizations.of(context).formatShortDate(item.deletedAt)}',
                             style: const TextStyle(
@@ -182,61 +194,81 @@ class _TrashScreenState extends State<TrashScreen> {
                               color: AirCryptColors.textSecondary,
                             ),
                           ),
-                          const Divider(height: 18),
+                          const Divider(height: 16),
                           Row(
                             children: [
                               Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () => _restore(item),
-                                  child: const Text(
-                                    '[ RESTORE ]',
-                                    style: TextStyle(fontSize: 9),
+                                child: SizedBox(
+                                  height: 36,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => _restore(item),
+                                    icon: const Icon(
+                                      Icons.restore,
+                                      size: 14,
+                                      color: AirCryptColors.textPrimary,
+                                    ),
+                                    label: const Text(
+                                      'RECOVER',
+                                      style: TextStyle(
+                                        fontFamily: 'Silkscreen',
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                        color: AirCryptColors.textPrimary,
+                                      ),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 8,
+                                      ),
+                                      side: const BorderSide(
+                                        color: AirCryptColors.cardBorder,
+                                        width: 1.2,
+                                      ),
+                                      shape: const RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.zero,
+                                      ),
+                                      backgroundColor: AirCryptColors.bgSurface,
+                                    ),
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () => _deletePermanently(item),
-                                  style:
-                                      OutlinedButton.styleFrom(
-                                        foregroundColor:
-                                            AirCryptColors.accentRed,
-                                        side: const BorderSide(
-                                          color: AirCryptColors.accentRed,
-                                        ),
-                                      ).copyWith(
-                                        backgroundColor:
-                                            WidgetStateProperty.resolveWith((
-                                              states,
-                                            ) {
-                                              if (states.contains(
-                                                WidgetState.pressed,
-                                              )) {
-                                                return AirCryptColors
-                                                    .textPrimary;
-                                              }
-                                              return Colors.transparent;
-                                            }),
-                                        foregroundColor:
-                                            WidgetStateProperty.resolveWith((
-                                              states,
-                                            ) {
-                                              if (states.contains(
-                                                WidgetState.pressed,
-                                              )) {
-                                                return AirCryptColors.bgSurface;
-                                              }
-                                              return AirCryptColors.accentRed;
-                                            }),
-                                        overlayColor:
-                                            const WidgetStatePropertyAll(
-                                              Colors.transparent,
-                                            ),
+                                child: SizedBox(
+                                  height: 36,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => _deletePermanently(item),
+                                    icon: const Icon(
+                                      Icons.delete_forever_outlined,
+                                      size: 14,
+                                      color: AirCryptColors.accentRed,
+                                    ),
+                                    label: const Text(
+                                      'DELETE',
+                                      style: TextStyle(
+                                        fontFamily: 'Silkscreen',
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                        color: AirCryptColors.accentRed,
                                       ),
-                                  child: const Text(
-                                    '[ DELETE ]',
-                                    style: TextStyle(fontSize: 9),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 8,
+                                      ),
+                                      side: const BorderSide(
+                                        color: AirCryptColors.accentRed,
+                                        width: 1.2,
+                                      ),
+                                      shape: const RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.zero,
+                                      ),
+                                      backgroundColor: AirCryptColors.bgSurface,
+                                    ),
                                   ),
                                 ),
                               ),

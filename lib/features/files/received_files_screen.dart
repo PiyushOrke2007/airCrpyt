@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 
 import '../../core/services/file_storage_service.dart';
+import '../../core/services/trash_service.dart';
 import '../../core/theme/aircrypt_theme.dart';
 import '../../core/widgets/cyber_widgets.dart';
 import '../settings/settings_screen.dart';
+import '../trash/trash_screen.dart';
 
 class ReceivedFilesScreen extends StatefulWidget {
   const ReceivedFilesScreen({super.key});
@@ -17,6 +19,8 @@ class ReceivedFilesScreen extends StatefulWidget {
 
 class _ReceivedFilesScreenState extends State<ReceivedFilesScreen> {
   final FileStorageService _storageService = FileStorageService();
+  final TrashService _trashService = TrashService();
+
   List<FileSystemEntity> _files = [];
   bool _isLoading = true;
   String _filter = '';
@@ -105,6 +109,41 @@ class _ReceivedFilesScreenState extends State<ReceivedFilesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to open file: $e'),
+          backgroundColor: AirCryptColors.accentRed,
+        ),
+      );
+    }
+  }
+
+  Future<void> _moveToTrash(FileSystemEntity file) async {
+    final fileName = _fileName(file);
+    try {
+      await _trashService.moveToTrash(
+        fileId: fileName,
+        filePath: file.path,
+      );
+      await _loadFiles();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Moved "$fileName" to Trash.'),
+          action: SnackBarAction(
+            label: 'VIEW TRASH',
+            textColor: AirCryptColors.accentCyan,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TrashScreen()),
+              );
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not move to trash: $e'),
           backgroundColor: AirCryptColors.accentRed,
         ),
       );
@@ -271,6 +310,42 @@ class _ReceivedFilesScreenState extends State<ReceivedFilesScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
+                            SizedBox(
+                              height: 36,
+                              child: OutlinedButton.icon(
+                                onPressed: () => _moveToTrash(file),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 14,
+                                  color: AirCryptColors.accentRed,
+                                ),
+                                label: const Text(
+                                  'TRASH',
+                                  style: TextStyle(
+                                    fontFamily: 'Silkscreen',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.6,
+                                    color: AirCryptColors.accentRed,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
+                                  side: const BorderSide(
+                                    color: AirCryptColors.accentRed,
+                                    width: 1.2,
+                                  ),
+                                  shape: const RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.zero,
+                                  ),
+                                  backgroundColor: AirCryptColors.bgSurface,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
                             SizedBox(
                               height: 36,
                               child: OutlinedButton.icon(
