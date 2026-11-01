@@ -126,7 +126,7 @@ class _TransferHistoryScreenState extends State<TransferHistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AIRCRYPT // HISTORY'),
+        title: const Text('AIRCRPYT // HISTORY'),
         actions: [
           IconButton(
             tooltip: 'Settings',

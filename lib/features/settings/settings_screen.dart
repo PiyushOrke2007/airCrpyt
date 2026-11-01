@@ -30,7 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadDeviceName() async {
     final savedName = await _settingsService.getDeviceName();
 
-    _deviceNameController.text = savedName ?? 'My AirCrypt Node';
+    _deviceNameController.text = savedName ?? 'My AIRCRPYT Node';
 
     if (mounted) {
       setState(() {
@@ -75,7 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('AIRCRYPT // SETTINGS')),
+      appBar: AppBar(title: const Text('AIRCRPYT // SETTINGS')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -114,7 +114,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Name broadcast to nearby AirCrypt peers on your local network.',
+                      'Name broadcast to nearby AIRCRPYT peers on your local network.',
                       style: TextStyle(
                         color: AirCryptColors.textSecondary,
                         fontSize: 10,
@@ -281,7 +281,7 @@ class _DeviceIdDebugScreenState extends State<DeviceIdDebugScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AIRCRYPT // IDENTITY')),
+      appBar: AppBar(title: const Text('AIRCRPYT // IDENTITY')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),

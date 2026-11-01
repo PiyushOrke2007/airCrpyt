@@ -19,7 +19,7 @@ class AircryptApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AirCrypt',
+      title: 'AIRCRPYT',
       debugShowCheckedModeBanner: false,
       theme: AirCryptTheme.darkTheme('Amatic'),
 
@@ -39,7 +39,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AIRCRYPT'),
+        title: const Text('AIRCRPYT'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),

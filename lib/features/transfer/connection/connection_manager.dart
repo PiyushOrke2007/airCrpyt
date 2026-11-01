@@ -63,7 +63,7 @@ class ConnectionManager {
       await sendMessage(
         ProtocolMessage.text(
           type: MessageType.hello,
-          text: 'Aircrypt Hello',
+          text: 'AIRCRPYT Hello',
         ),
       );
     } catch (error) {

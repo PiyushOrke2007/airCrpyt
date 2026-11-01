@@ -119,7 +119,7 @@ class _TcpSenderScreenState extends State<TcpSenderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AIRCRYPT // TX DEBUG')),
+      appBar: AppBar(title: const Text('AIRCRPYT // TX DEBUG')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),

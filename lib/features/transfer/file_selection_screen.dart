@@ -72,7 +72,7 @@ class _FileSelectionScreenState extends State<FileSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AIRCRYPT // SEND')),
+      appBar: AppBar(title: const Text('AIRCRPYT // SEND')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),

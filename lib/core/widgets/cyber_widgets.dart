@@ -479,7 +479,7 @@ class AirCryptHeader extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: const [
               Text(
-                'AirCrypt',
+                'AIRCRPYT',
                 style: TextStyle(
                   color: AirCryptColors.textPrimary,
                   fontSize: 18,
@@ -551,7 +551,7 @@ class AirCryptHeader extends StatelessWidget {
             end: Alignment.bottomRight,
           ).createShader(bounds),
           child: const Text(
-            'AirCrypt',
+            'AIRCRPYT',
             style: TextStyle(
               color: Colors.white,
               fontSize: 38,

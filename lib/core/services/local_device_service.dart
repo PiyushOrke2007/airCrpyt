@@ -20,7 +20,7 @@ class LocalDeviceService {
     final savedName = await _settingsService.getDeviceName();
 
     final deviceName =
-        savedName ?? 'My Aircrypt Device';
+        savedName ?? 'My AIRCRPYT Device';
 
     return DeviceInfo(
       deviceId: deviceId,

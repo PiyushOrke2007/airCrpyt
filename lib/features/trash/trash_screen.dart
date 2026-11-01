@@ -103,7 +103,7 @@ class _TrashScreenState extends State<TrashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AIRCRYPT // TRASH')),
+      appBar: AppBar(title: const Text('AIRCRPYT // TRASH')),
       body: SafeArea(
         child: _isLoading
             ? const Center(

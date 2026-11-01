@@ -84,7 +84,7 @@ class _TcpReceiverScreenState extends State<TcpReceiverScreen> {
             await incoming.connection.sendMessage(
               ProtocolMessage.text(
                 type: MessageType.helloResponse,
-                text: 'Aircrypt Hello Response',
+                text: 'AIRCRPYT Hello Response',
               ),
             );
           }
@@ -121,7 +121,7 @@ class _TcpReceiverScreenState extends State<TcpReceiverScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AIRCRYPT // RX DEBUG')),
+      appBar: AppBar(title: const Text('AIRCRPYT // RX DEBUG')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),

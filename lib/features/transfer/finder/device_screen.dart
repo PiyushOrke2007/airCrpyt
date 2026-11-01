@@ -249,7 +249,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          fileCount > 0 ? 'AIRCRYPT // RECIPIENTS' : 'AIRCRYPT // RECEIVE',
+          fileCount > 0 ? 'AIRCRPYT // RECIPIENTS' : 'AIRCRPYT // RECEIVE',
         ),
         actions: [
           IconButton(

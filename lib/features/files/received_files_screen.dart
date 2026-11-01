@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
 
 import '../../core/services/file_storage_service.dart';
 import '../../core/theme/aircrypt_theme.dart';
@@ -64,6 +65,52 @@ class _ReceivedFilesScreenState extends State<ReceivedFilesScreen> {
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
+  Future<void> _openFile(FileSystemEntity file) async {
+    final filePath = file.path;
+    final fileName = _fileName(file);
+    final extension = fileName.contains('.')
+        ? fileName.split('.').last.toUpperCase()
+        : 'FILE';
+
+    try {
+      final result = await OpenFilex.open(filePath);
+      if (!mounted) return;
+
+      if (result.type == ResultType.noAppToOpen) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'No application found on device to open .$extension files.',
+            ),
+            backgroundColor: AirCryptColors.accentRed,
+          ),
+        );
+      } else if (result.type == ResultType.fileNotFound) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('File not found or has been moved.'),
+            backgroundColor: AirCryptColors.accentRed,
+          ),
+        );
+      } else if (result.type == ResultType.error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open file: ${result.message}'),
+            backgroundColor: AirCryptColors.accentRed,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to open file: $e'),
+          backgroundColor: AirCryptColors.accentRed,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final visibleFiles = _files
@@ -72,7 +119,7 @@ class _ReceivedFilesScreenState extends State<ReceivedFilesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AIRCRYPT // RECEIVED'),
+        title: const Text('AIRCRPYT // RECEIVED'),
         actions: [
           IconButton(
             tooltip: 'Settings',
@@ -156,47 +203,110 @@ class _ReceivedFilesScreenState extends State<ReceivedFilesScreen> {
                   }
 
                   final file = visibleFiles[index - 2];
+                  final extension = _fileName(file).contains('.')
+                      ? _fileName(file).split('.').last.toUpperCase()
+                      : 'FILE';
+
                   return CyberCard(
-                    margin: const EdgeInsets.only(bottom: 10),
+                    margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(12),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.description_outlined,
-                          size: 20,
-                          color: AirCryptColors.textPrimary,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _fileName(file),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AirCryptColors.cardBgElevated,
+                                border: Border.all(
+                                  color: AirCryptColors.cardBorder,
+                                  width: 1.2,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _fileDetails(file),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 9,
-                                  color: AirCryptColors.textSecondary,
+                              child: const Icon(
+                                Icons.insert_drive_file_outlined,
+                                size: 20,
+                                color: AirCryptColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _fileName(file),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _fileDetails(file),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: AirCryptColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            CyberBadge(
+                              label: extension,
+                              color: AirCryptColors.textPrimary,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        const Divider(height: 1, thickness: 1),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            SizedBox(
+                              height: 36,
+                              child: OutlinedButton.icon(
+                                onPressed: () => _openFile(file),
+                                icon: const Icon(
+                                  Icons.launch,
+                                  size: 14,
+                                  color: AirCryptColors.textPrimary,
+                                ),
+                                label: const Text(
+                                  'OPEN',
+                                  style: TextStyle(
+                                    fontFamily: 'Silkscreen',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.6,
+                                    color: AirCryptColors.textPrimary,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
+                                  side: const BorderSide(
+                                    color: AirCryptColors.cardBorder,
+                                    width: 1.2,
+                                  ),
+                                  shape: const RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.zero,
+                                  ),
+                                  backgroundColor: AirCryptColors.bgSurface,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        CyberBadge(
-                          label: _fileName(file).split('.').last.toUpperCase(),
-                          color: AirCryptColors.textPrimary,
+                            ),
+                          ],
                         ),
                       ],
                     ),

@@ -104,7 +104,7 @@ class TransferProgressScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AIRCRYPT // TRANSFER'),
+        title: const Text('AIRCRPYT // TRANSFER'),
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
